@@ -1,6 +1,6 @@
-![](https://github.com/ngoduykhanh/wireguard-ui/workflows/wireguard-ui%20build%20release/badge.svg)
+![](https://github.com/swissmakers/wireguard-manager/workflows/wireguard-manager%20build%20release/badge.svg)
 
-# wireguard-ui
+# wireguard-manager
 
 A web user interface to manage your WireGuard setup.
 
@@ -11,7 +11,7 @@ A web user interface to manage your WireGuard setup.
 - Manage extra client information (name, email, etc.)
 - Retrieve client config using QR code / file / email / Telegram
 
-![wireguard-ui 0.3.7](https://user-images.githubusercontent.com/37958026/177041280-e3e7ca16-d4cf-4e95-9920-68af15e780dd.png)
+![wireguard-manager 0.3.7](https://user-images.githubusercontent.com/37958026/177041280-e3e7ca16-d4cf-4e95-9920-68af15e780dd.png)
 
 ## Run WireGuard-UI
 
@@ -22,7 +22,7 @@ A web user interface to manage your WireGuard setup.
 Download the binary file from the release page and run it directly on the host machine
 
 ```
-./wireguard-ui
+./wireguard-manager
 ```
 
 ### Using docker compose
@@ -38,7 +38,7 @@ docker-compose up
 
 | Variable                      | Description                                                                                                                                                                                                                                                                         | Default                            |
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
-| `BASE_PATH`                   | Set this variable if you run wireguard-ui under a subpath of your reverse proxy virtual host (e.g. /wireguard)                                                                                                                                                                      | N/A                                |
+| `BASE_PATH`                   | Set this variable if you run wireguard-manager under a subpath of your reverse proxy virtual host (e.g. /wireguard)                                                                                                                                                                      | N/A                                |
 | `BIND_ADDRESS`                | The addresses that can access to the web interface and the port, use unix:///abspath/to/file.socket for unix domain socket.                                                                                                                                                         | 0.0.0.0:80                         |
 | `SESSION_SECRET`              | The secret key used to encrypt the session cookies. Set this to a random value                                                                                                                                                                                                      | N/A                                |
 | `SESSION_SECRET_FILE`         | Optional filepath for the secret key used to encrypt the session cookies. Leave `SESSION_SECRET` blank to take effect                                                                                                                                                               | N/A                                |
@@ -58,7 +58,7 @@ docker-compose up
 | `WGUI_TABLE`                  | The default WireGuard table value settings                                                                                                                                                                                                                                          | `auto`                             |
 | `WGUI_CONFIG_FILE_PATH`       | The default WireGuard config file path used in global settings                                                                                                                                                                                                                      | `/etc/wireguard/wg0.conf`          |
 | `WGUI_LOG_LEVEL`              | The default log level. Possible values: `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`                                                                                                                                                                                                     | `INFO`                             |
-| `WG_CONF_TEMPLATE`            | The custom `wg.conf` config file template. Please refer to our [default template](https://github.com/ngoduykhanh/wireguard-ui/blob/master/templates/wg.conf)                                                                                                                        | N/A                                |
+| `WG_CONF_TEMPLATE`            | The custom `wg.conf` config file template. Please refer to our [default template](https://github.com/swissmakers/wireguard-manager/blob/master/templates/wg.conf)                                                                                                                        | N/A                                |
 | `EMAIL_FROM_ADDRESS`          | The sender email address                                                                                                                                                                                                                                                            | N/A                                |
 | `EMAIL_FROM_NAME`             | The sender name                                                                                                                                                                                                                                                                     | `WireGuard UI`                     |
 | `SENDGRID_API_KEY`            | The SendGrid api key                                                                                                                                                                                                                                                                | N/A                                |
@@ -205,7 +205,7 @@ this feature work.
 Go to the project root directory and run the following command:
 
 ```sh
-docker build --build-arg=GIT_COMMIT=$(git rev-parse --short HEAD) -t wireguard-ui .
+docker build --build-arg=GIT_COMMIT=$(git rev-parse --short HEAD) -t wireguard-manager .
 ```
 
 or
@@ -214,11 +214,11 @@ or
 docker compose build --build-arg=GIT_COMMIT=$(git rev-parse --short HEAD)
 ```
 
-:information_source: A container image is available on [Docker Hub](https://hub.docker.com/r/ngoduykhanh/wireguard-ui)
+:information_source: A container image is available on [Docker Hub](https://hub.docker.com/r/swissmakers/wireguard-manager)
 which you can pull and use
 
 ```
-docker pull ngoduykhanh/wireguard-ui
+docker pull swissmakers/wireguard-manager
 ````
 
 ### Build binary file
@@ -232,12 +232,12 @@ Prepare the assets directory
 Then build your executable
 
 ```sh
-go build -o wireguard-ui
+go build -o wireguard-manager
 ```
 
 ## License
 
-MIT. See [LICENSE](https://github.com/ngoduykhanh/wireguard-ui/blob/master/LICENSE).
+MIT. See [LICENSE](https://github.com/swissmakers/wireguard-manager/blob/master/LICENSE).
 
 ## Support
 

@@ -1,9 +1,9 @@
 version: "3"
 
 services:
-  wireguard-ui:
-    image: ngoduykhanh/wireguard-ui:latest
-    container_name: wireguard-ui
+  wireguard-manager:
+    image: swissmakers/wireguard-manager:latest
+    container_name: wireguard-manager
     cap_add:
       - NET_ADMIN
     # required to show active clients. with this set, you don't need to expose the ui port (5000) anymore

@@ -1,6 +1,6 @@
-module github.com/ngoduykhanh/wireguard-ui
+module github.com/swissmakers/wireguard-manager
 
-go 1.21
+go 1.22.9
 
 require (
 	github.com/NicoNex/echotron/v3 v3.27.0

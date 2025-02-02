@@ -6,17 +6,17 @@ services:
     command:
       - wg0
     container_name: boringtun
-    # use the network of the 'wireguard-ui' service. this enables to show active clients in the status page
-    network_mode: service:wireguard-ui
+    # use the network of the 'wireguard-manager' service. this enables to show active clients in the status page
+    network_mode: service:wireguard-manager
     cap_add:
       - NET_ADMIN
     volumes:
       - /dev/net/tun:/dev/net/tun
       - ./config:/etc/wireguard
 
-  wireguard-ui:
-    image: ngoduykhanh/wireguard-ui:latest
-    container_name: wireguard-ui
+  wireguard-manager:
+    image: swissmakers/wireguard-manager:latest
+    container_name: wireguard-manager
     cap_add:
       - NET_ADMIN
     environment:
@@ -37,7 +37,7 @@ services:
       - ./db:/app/db
       - ./config:/etc/wireguard
     ports:
-      # port for wireguard-ui
+      # port for wireguard-manager
       - "5000:5000"
       # port of the wireguard server. this must be set here as the `boringtun` container joins the network of this container and hasn't its own network over which it could publish the ports
       - "51820:51820/udp"

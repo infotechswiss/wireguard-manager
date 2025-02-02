@@ -20,15 +20,15 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/ngoduykhanh/wireguard-ui/store"
-	"github.com/ngoduykhanh/wireguard-ui/telegram"
 	"github.com/skip2/go-qrcode"
+	"github.com/swissmakers/wireguard-manager/store"
+	"github.com/swissmakers/wireguard-manager/telegram"
 	"golang.org/x/mod/sumdb/dirhash"
 
 	externalip "github.com/glendc/go-external-ip"
 	"github.com/labstack/gommon/log"
-	"github.com/ngoduykhanh/wireguard-ui/model"
 	"github.com/sdomino/scribble"
+	"github.com/swissmakers/wireguard-manager/model"
 )
 
 var qrCodeSettings = model.QRCodeSettings{

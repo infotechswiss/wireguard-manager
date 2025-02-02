@@ -1,4 +1,4 @@
-name: wireguard-ui build release
+name: wireguard-manager build release
 
 on:
   release:
@@ -56,6 +56,6 @@ jobs:
         goarch: ${{ matrix.goarch }}
         goversion: "https://dl.google.com/go/go1.21.5.linux-amd64.tar.gz"
         pre_command: export CGO_ENABLED=0
-        binary_name: "wireguard-ui"
+        binary_name: "wireguard-manager"
         build_flags: -v
         ldflags: -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}" -X main.gitCommit=${{ github.sha }} -X main.gitRef=${{ github.ref }}
