@@ -85,7 +85,7 @@
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
             <!-- Brand Logo -->
             <a href="{{.basePath}}" class="brand-link">
-                <span class="brand-text">&nbsp; WIREGUARD UI</span>
+                <span class="brand-text">&nbsp; WIREGUARD MANAGER</span>
             </a>
 
             <!-- Sidebar -->
@@ -280,10 +280,6 @@
                             <details style="margin-top: 0.5rem;">
                                 <summary><strong>Additional configuration</strong>
                                 </summary>
-                                <div class="form-group" style="margin-top: 0.5rem;">
-                                    <label for="client_telegram_userid" class="control-label">Telegram userid</label>
-                                    <input type="text" class="form-control" id="client_telegram_userid" name="client_telegram_userid">
-                                </div>
                                 <div class="form-group">
                                     <label for="additional_notes" class="control-label">Notes</label>
                                     <textarea class="form-control" style="min-height: 6rem;" id="additional_notes" name="additional_notes" placeholder="Additional notes about this client"></textarea>
@@ -457,7 +453,6 @@
         function submitNewClient() {
             const name = $("#client_name").val();
             const email = $("#client_email").val();
-            const telegram_userid = $("#client_telegram_userid").val();
             const allocated_ips = $("#client_allocated_ips").val().split(",");
             const allowed_ips = $("#client_allowed_ips").val().split(",");
             const endpoint = $("#client_endpoint").val();
@@ -483,7 +478,7 @@
             
             const additional_notes = $("#additional_notes").val();
 
-            const data = {"name": name, "email": email, "telegram_userid": telegram_userid, "allocated_ips": allocated_ips, "allowed_ips": allowed_ips,
+            const data = {"name": name, "email": email, "allocated_ips": allocated_ips, "allowed_ips": allowed_ips,
                 "extra_allowed_ips": extra_allowed_ips, "endpoint": endpoint, "use_server_dns": use_server_dns, "enabled": enabled,
                 "public_key": public_key, "preshared_key": preshared_key, "additional_notes": additional_notes};
 
@@ -625,7 +620,6 @@
                 $("#client_allocated_ips").importTags('');
                 $("#client_extra_allowed_ips").importTags('');
                 $("#client_endpoint").val('');
-                $("#client_telegram_userid").val('');
                 $("#additional_notes").val('');
                 updateSubnetRangesList("#subnet_ranges");
                 updateIPAllocationSuggestion(true);
