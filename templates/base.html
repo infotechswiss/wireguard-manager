@@ -21,12 +21,8 @@
     <link rel="stylesheet" href="{{.basePath}}/static/plugins/toastr/toastr.min.css">
     <!-- Jquery Tags Input -->
     <link rel="stylesheet" href="{{.basePath}}/static/plugins/jquery-tags-input/dist/jquery.tagsinput.min.css">
-    <!-- Ionicons -->
-    <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
     <!-- overlayScrollbars -->
     <link rel="stylesheet" href="{{.basePath}}/static/dist/css/adminlte.min.css">
-    <!-- Google Font: Source Sans Pro -->
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
 
     <!-- START: On page css -->
     {{template "top_css" .}}
@@ -89,7 +85,7 @@
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
             <!-- Brand Logo -->
             <a href="{{.basePath}}" class="brand-link">
-                <span class="brand-text">&nbsp; WIREGUARD UI</span>
+                <span class="brand-text">&nbsp; WIREGUARD MANAGER</span>
             </a>
 
             <!-- Sidebar -->
@@ -122,7 +118,7 @@
                             <a href="{{.basePath}}/" class="nav-link {{if eq .baseData.Active ""}}active{{end}}">
                                 <i class="nav-icon fas fa-user-secret"></i>
                                 <p>
-                                    Wireguard Clients
+                                    WireGuard Clients
                                 </p>
                             </a>
                         </li>
@@ -132,7 +128,7 @@
                             <a href="{{.basePath}}/wg-server" class="nav-link {{if eq .baseData.Active "wg-server" }}active{{end}}">
                                 <i class="nav-icon fas fa-server"></i>
                                 <p>
-                                    Wireguard Server
+                                    WireGuard Server
                                 </p>
                             </a>
                         </li>
@@ -196,7 +192,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h4 class="modal-title">New Wireguard Client</h4>
+                        <h4 class="modal-title">New WireGuard Client</h4>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -284,10 +280,6 @@
                             <details style="margin-top: 0.5rem;">
                                 <summary><strong>Additional configuration</strong>
                                 </summary>
-                                <div class="form-group" style="margin-top: 0.5rem;">
-                                    <label for="client_telegram_userid" class="control-label">Telegram userid</label>
-                                    <input type="text" class="form-control" id="client_telegram_userid" name="client_telegram_userid">
-                                </div>
                                 <div class="form-group">
                                     <label for="additional_notes" class="control-label">Notes</label>
                                     <textarea class="form-control" style="min-height: 6rem;" id="additional_notes" name="additional_notes" placeholder="Additional notes about this client"></textarea>
@@ -352,7 +344,7 @@
             <div class="float-right d-none d-sm-block">
                 <b>Version</b> {{ .appVersion }}
             </div>
-            <strong>Copyright &copy; <script>document.write(new Date().getFullYear())</script> <a href="https://github.com/swissmakers/wireguard-manager">Wireguard UI</a>.</strong> All rights
+            <strong>Copyright &copy; <script>document.write(new Date().getFullYear())</script> <a href="https://github.com/swissmakers/wireguard-manager">WireGuard Manager</a>.</strong> All rights
             reserved.
         </footer>
         -->
@@ -461,7 +453,6 @@
         function submitNewClient() {
             const name = $("#client_name").val();
             const email = $("#client_email").val();
-            const telegram_userid = $("#client_telegram_userid").val();
             const allocated_ips = $("#client_allocated_ips").val().split(",");
             const allowed_ips = $("#client_allowed_ips").val().split(",");
             const endpoint = $("#client_endpoint").val();
@@ -487,7 +478,7 @@
             
             const additional_notes = $("#additional_notes").val();
 
-            const data = {"name": name, "email": email, "telegram_userid": telegram_userid, "allocated_ips": allocated_ips, "allowed_ips": allowed_ips,
+            const data = {"name": name, "email": email, "allocated_ips": allocated_ips, "allowed_ips": allowed_ips,
                 "extra_allowed_ips": extra_allowed_ips, "endpoint": endpoint, "use_server_dns": use_server_dns, "enabled": enabled,
                 "public_key": public_key, "preshared_key": preshared_key, "additional_notes": additional_notes};
 
@@ -629,7 +620,6 @@
                 $("#client_allocated_ips").importTags('');
                 $("#client_extra_allowed_ips").importTags('');
                 $("#client_endpoint").val('');
-                $("#client_telegram_userid").val('');
                 $("#additional_notes").val('');
                 updateSubnetRangesList("#subnet_ranges");
                 updateIPAllocationSuggestion(true);

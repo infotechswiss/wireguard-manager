@@ -21,9 +21,7 @@ import (
 	"time"
 
 	"github.com/chmike/domain"
-	"github.com/skip2/go-qrcode"
 	"github.com/swissmakers/wireguard-manager/store"
-	"github.com/swissmakers/wireguard-manager/telegram"
 	"golang.org/x/mod/sumdb/dirhash"
 
 	externalip "github.com/glendc/go-external-ip"
@@ -31,12 +29,6 @@ import (
 	"github.com/sdomino/scribble"
 	"github.com/swissmakers/wireguard-manager/model"
 )
-
-var qrCodeSettings = model.QRCodeSettings{
-	Enabled:    true,
-	IncludeDNS: true,
-	IncludeMTU: true,
-}
 
 // BuildClientConfig to create wireguard client config string
 func BuildClientConfig(client model.Client, server model.Server, setting model.GlobalSetting) string {
@@ -541,9 +533,9 @@ func GetSubnetRangesString() string {
 	return strings.TrimSpace(strB.String())
 }
 
-// WriteWireGuardServerConfig to write Wireguard server config. e.g. wg0.conf
+// WriteWireGuardServerConfig to write WireGuard server config. e.g. wg0.conf
 func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, clientDataList []model.ClientData, usersList []model.User, globalSettings model.GlobalSetting) error {
-	var tmplWireguardConf string
+	var tmplWireGuardConf string
 
 	// if set, read wg.conf template from WgConfTemplate
 	if len(WgConfTemplate) > 0 {
@@ -551,14 +543,14 @@ func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, client
 		if err != nil {
 			return err
 		}
-		tmplWireguardConf = string(fileContentBytes)
+		tmplWireGuardConf = string(fileContentBytes)
 	} else {
 		// read default wg.conf template file to string
 		fileContent, err := StringFromEmbedFile(tmplDir, "wg.conf")
 		if err != nil {
 			return err
 		}
-		tmplWireguardConf = fileContent
+		tmplWireGuardConf = fileContent
 	}
 
 	// escape multiline notes
@@ -571,7 +563,7 @@ func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, client
 	}
 
 	// parse the template
-	t, err := template.New("wg_config").Parse(tmplWireguardConf)
+	t, err := template.New("wg_config").Parse(tmplWireGuardConf)
 	if err != nil {
 		return err
 	}
@@ -596,57 +588,6 @@ func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, client
 	f.Close()
 
 	return nil
-}
-
-// SendRequestedConfigsToTelegram to send client all their configs. Returns failed configs list.
-func SendRequestedConfigsToTelegram(db store.IStore, userid int64) []string {
-	failedList := make([]string, 0)
-	TgUseridToClientIDMutex.RLock()
-	if clids, found := TgUseridToClientID[userid]; found && len(clids) > 0 {
-		TgUseridToClientIDMutex.RUnlock()
-
-		for _, clid := range clids {
-			clientData, err := db.GetClientByID(clid, qrCodeSettings)
-			if err != nil {
-				// return fmt.Errorf("unable to get client")
-				failedList = append(failedList, clid)
-				continue
-			}
-
-			// build config
-			server, _ := db.GetServer()
-			globalSettings, _ := db.GetGlobalSettings()
-			config := BuildClientConfig(*clientData.Client, server, globalSettings)
-			configData := []byte(config)
-			var qrData []byte
-
-			if clientData.Client.PrivateKey != "" {
-				qrData, err = qrcode.Encode(config, qrcode.Medium, 512)
-				if err != nil {
-					// return fmt.Errorf("unable to encode qr")
-					failedList = append(failedList, clientData.Client.Name)
-					continue
-				}
-			}
-
-			userid, err := strconv.ParseInt(clientData.Client.TgUserid, 10, 64)
-			if err != nil {
-				// return fmt.Errorf("tg usrid is unreadable")
-				failedList = append(failedList, clientData.Client.Name)
-				continue
-			}
-
-			err = telegram.SendConfig(userid, clientData.Client.Name, configData, qrData, true)
-			if err != nil {
-				failedList = append(failedList, clientData.Client.Name)
-				continue
-			}
-			time.Sleep(2 * time.Second)
-		}
-	} else {
-		TgUseridToClientIDMutex.RUnlock()
-	}
-	return failedList
 }
 
 func LookupEnvOrString(key string, defaultVal string) string {
@@ -777,68 +718,6 @@ func RandomString(length int) string {
 func ManagePerms(path string) error {
 	err := os.Chmod(path, 0600)
 	return err
-}
-
-func AddTgToClientID(userid int64, clientID string) {
-	TgUseridToClientIDMutex.Lock()
-	defer TgUseridToClientIDMutex.Unlock()
-
-	if _, ok := TgUseridToClientID[userid]; ok && TgUseridToClientID[userid] != nil {
-		TgUseridToClientID[userid] = append(TgUseridToClientID[userid], clientID)
-	} else {
-		TgUseridToClientID[userid] = []string{clientID}
-	}
-}
-
-func UpdateTgToClientID(userid int64, clientID string) {
-	TgUseridToClientIDMutex.Lock()
-	defer TgUseridToClientIDMutex.Unlock()
-
-	// Detach clientID from any existing userid
-	for uid, cls := range TgUseridToClientID {
-		if cls != nil {
-			filtered := filterStringSlice(cls, clientID)
-			if len(filtered) > 0 {
-				TgUseridToClientID[uid] = filtered
-			} else {
-				delete(TgUseridToClientID, uid)
-			}
-		}
-	}
-
-	// Attach it to the new one
-	if _, ok := TgUseridToClientID[userid]; ok && TgUseridToClientID[userid] != nil {
-		TgUseridToClientID[userid] = append(TgUseridToClientID[userid], clientID)
-	} else {
-		TgUseridToClientID[userid] = []string{clientID}
-	}
-}
-
-func RemoveTgToClientID(clientID string) {
-	TgUseridToClientIDMutex.Lock()
-	defer TgUseridToClientIDMutex.Unlock()
-
-	// Detach clientID from any existing userid
-	for uid, cls := range TgUseridToClientID {
-		if cls != nil {
-			filtered := filterStringSlice(cls, clientID)
-			if len(filtered) > 0 {
-				TgUseridToClientID[uid] = filtered
-			} else {
-				delete(TgUseridToClientID, uid)
-			}
-		}
-	}
-}
-
-func filterStringSlice(s []string, excludedStr string) []string {
-	filtered := s[:0]
-	for _, v := range s {
-		if v != excludedStr {
-			filtered = append(filtered, v)
-		}
-	}
-	return filtered
 }
 
 func GetDBUserCRC32(dbuser model.User) uint32 {

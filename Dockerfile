@@ -58,8 +58,8 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'm
 # Release stage
 FROM alpine:3.19
 
-RUN addgroup -S wgui && \
-    adduser -S -D -G wgui wgui
+RUN addgroup -S wgm && \
+    adduser -S -D -G wgm wgm
 
 RUN apk --no-cache add ca-certificates wireguard-tools jq iptables
 
@@ -68,7 +68,7 @@ WORKDIR /app
 RUN mkdir -p db
 
 # Copy binary files
-COPY --from=builder --chown=wgui:wgui /build/wg-ui .
+COPY --from=builder --chown=wgm:wgm /build/wg-ui .
 RUN chmod +x wg-ui
 COPY init.sh .
 RUN chmod +x init.sh
