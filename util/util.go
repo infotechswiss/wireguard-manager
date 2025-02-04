@@ -30,12 +30,6 @@ import (
 	"github.com/swissmakers/wireguard-manager/model"
 )
 
-var qrCodeSettings = model.QRCodeSettings{
-	Enabled:    true,
-	IncludeDNS: true,
-	IncludeMTU: true,
-}
-
 // BuildClientConfig to create wireguard client config string
 func BuildClientConfig(client model.Client, server model.Server, setting model.GlobalSetting) string {
 	// Interface section
@@ -724,16 +718,6 @@ func RandomString(length int) string {
 func ManagePerms(path string) error {
 	err := os.Chmod(path, 0600)
 	return err
-}
-
-func filterStringSlice(s []string, excludedStr string) []string {
-	filtered := s[:0]
-	for _, v := range s {
-		if v != excludedStr {
-			filtered = append(filtered, v)
-		}
-	}
-	return filtered
 }
 
 func GetDBUserCRC32(dbuser model.User) uint32 {
