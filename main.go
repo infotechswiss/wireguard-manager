@@ -27,7 +27,7 @@ import (
 
 var (
 	// command-line banner information
-	appVersion = "development"
+	appVersion = "stable"
 	gitCommit  = "N/A"
 	gitRef     = "N/A"
 	buildTime  = time.Now().UTC().Format("01-02-2006 15:04:05")
@@ -46,7 +46,7 @@ var (
 	flagSmtpHelo                 = "localhost"
 	flagSendgridApiKey           string
 	flagEmailFrom                string
-	flagEmailFromName            = "WireGuard UI"
+	flagEmailFromName            = "WireGuard Manager"
 	flagTelegramToken            string
 	flagTelegramAllowConfRequest = false
 	flagTelegramFloodWait        = 60
@@ -158,7 +158,7 @@ func init() {
 	// print only if log level is INFO or lower
 	if lvl <= log.INFO {
 		// print app information
-		fmt.Println("Wireguard UI")
+		fmt.Println("WireGuard Manager")
 		fmt.Println("App Version\t:", appVersion)
 		fmt.Println("Git Commit\t:", gitCommit)
 		fmt.Println("Git Ref\t\t:", gitRef)

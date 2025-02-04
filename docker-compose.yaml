@@ -4,7 +4,7 @@ services:
   wg:
     build: .
     #image: swissmakers/wireguard-manager:latest
-    container_name: wgui
+    container_name: wgm
     cap_add:
       - NET_ADMIN
     network_mode: host
@@ -13,11 +13,11 @@ services:
       - EMAIL_FROM_ADDRESS
       - EMAIL_FROM_NAME
       - SESSION_SECRET
-      - WGUI_USERNAME=alpha
-      - WGUI_PASSWORD=this-unusual-password
+      - WGM_USERNAME=alpha
+      - WGM_PASSWORD=this-unusual-password
       - WG_CONF_TEMPLATE
-      - WGUI_MANAGE_START=false
-      - WGUI_MANAGE_RESTART=false
+      - WGM_MANAGE_START=false
+      - WGM_MANAGE_RESTART=false
     logging:
       driver: json-file
       options:

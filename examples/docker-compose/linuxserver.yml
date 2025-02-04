@@ -28,11 +28,11 @@ services:
       - EMAIL_FROM_ADDRESS
       - EMAIL_FROM_NAME
       - SESSION_SECRET
-      - WGUI_USERNAME=admin
-      - WGUI_PASSWORD=admin
+      - WGM_USERNAME=admin
+      - WGM_PASSWORD=admin
       - WG_CONF_TEMPLATE
-      - WGUI_MANAGE_START=true
-      - WGUI_MANAGE_RESTART=true
+      - WGM_MANAGE_START=true
+      - WGM_MANAGE_RESTART=true
     logging:
       driver: json-file
       options:
