@@ -1,10 +1,10 @@
 {
   "name": "wireguard-manager",
-  "version": "1.0.0",
-  "description": "Wireguard web interface",
+  "version": "0.0.1",
+  "description": "A Wireguard web-interface",
   "main": "index.js",
   "repository": "git@github.com:swissmakers/wireguard-manager.git",
-  "author": "Khanh Ngo <k@ndk.name>",
+  "author": "Swissmakers GmbH <info@swissmakers.ch>",
   "license": "MIT",
   "dependencies": {
     "admin-lte": "^3.0",

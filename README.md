@@ -2,11 +2,11 @@
 
 # wireguard-manager
 
-A web user interface to manage your WireGuard setup.
+A web interface to manage WireGuard.
 
 ## Features
 
-- Friendly UI
+- User-Friendly UI
 - Authentication
 - Manage extra client information (name, email, etc.)
 - Retrieve client config using QR code / file / email / Telegram
@@ -39,6 +39,7 @@ docker-compose up
 | Variable                      | Description                                                                                                                                                                                                                                                                         | Default                            |
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
 | `BASE_PATH`                   | Set this variable if you run wireguard-manager under a subpath of your reverse proxy virtual host (e.g. /wireguard)                                                                                                                                                                      | N/A                                |
+| `PROXY`                       | Use X-FORWARDED-FOR header for logging                                                                                                                                                    | `false`    
 | `BIND_ADDRESS`                | The addresses that can access to the web interface and the port, use unix:///abspath/to/file.socket for unix domain socket.                                                                                                                                                         | 0.0.0.0:80                         |
 | `SESSION_SECRET`              | The secret key used to encrypt the session cookies. Set this to a random value                                                                                                                                                                                                      | N/A                                |
 | `SESSION_SECRET_FILE`         | Optional filepath for the secret key used to encrypt the session cookies. Leave `SESSION_SECRET` blank to take effect                                                                                                                                                               | N/A                                |
@@ -105,6 +106,7 @@ These environment variables only apply to the docker container.
 |-----------------------|---------------------------------------------------------------|---------|
 | `WGUI_MANAGE_START`   | Start/stop WireGuard when the container is started/stopped    | `false` |
 | `WGUI_MANAGE_RESTART` | Auto restart WireGuard when we Apply Config changes in the UI | `false` |
+| `WGUI_MANAGE_RELOAD`  | Auto reload WireGuard when we Apply Config changes in the UI  | `false` |
 
 ## Auto restart WireGuard daemon
 
@@ -113,6 +115,72 @@ service. Following is an example:
 
 ### Using systemd
 
+#### Create dedicated wireguard-ui user
+```bash
+useradd -m -r -s /bin/false -d /var/lib/wireguard-ui wireguard-ui
+```
+
+#### Create wireguard config file and set permission with Linux ACL
+```bash
+touch /etc/wireguard/wg0.conf
+setfacl -m wireguard-ui:rw /etc/wireguard/wg0.conf
+```
+
+#### Create environment file for wireguard-ui
+```/etc/wireguard-ui/environment.conf```
+```env
+BASE_PATH="/"
+BIND_ADDRESS="127.0.0.1:5000"
+SESSION_SECRET="veryS3cr3t"
+WGUI_USERNAME="admin"
+WGUI_PASSWORD="my+password"
+WGUI_ENDPOINT_ADDRESS="vpn.example.com"
+WGUI_DNS="1.1.1.1"
+WGUI_MTU="1450"
+WGUI_PERSISTENT_KEEPALIVE="15"
+WGUI_CONFIG_FILE_PATH="/etc/wireguard/wg0.conf"
+WGUI_LOG_LEVEL="DEBUG"
+# WG_CONF_TEMPLATE=
+# EMAIL_FROM_ADDRESS=
+# EMAIL_FROM_NAME=
+# SENDGRID_API_KEY=
+# SMTP_HOSTNAME=
+# SMTP_PORT=
+# SMTP_USERNAME=
+# SMTP_PASSWORD=
+# SMTP_AUTH_TYPE=
+# SMTP_ENCRYPTION=
+```
+
+#### Create systemd service for wireguard-ui
+```/etc/systemd/system/wireguard-ui.service```
+
+```bash
+[Unit]
+Description=WireGuard UI
+ConditionPathExists=/var/lib/wireguard-ui
+After=network.target
+
+[Service]
+Type=simple
+User=wireguard-ui
+Group=wireguard-ui
+
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_RAW
+
+WorkingDirectory=/var/lib/wireguard-ui
+EnvironmentFile=/etc/wireguard-ui/environment.conf
+ExecStart=/usr/local/share/applications/wireguard-ui
+
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### TODO (maybe delete)
 Create `/etc/systemd/system/wgui.service`
 
 ```bash
@@ -198,6 +266,10 @@ running the container with `restart: unless-stopped`. These settings can also pi
 Path, after restarting the container. Please make sure you have `--cap-add=NET_ADMIN` in your container config to make
 this feature work.
 
+Set `WGUI_MANAGE_RELOAD=true` to manage WireGuard interface reload.
+Using `WGUI_MANAGE_RELOAD=true` will use `wg syncconf wg0 /path/to/file` to update the WireGuard running-configuration
+without restart. Please make sure you have `--cap-add=NET_ADMIN` in your container config to make this feature work.
+
 ## Build
 
 ### Build docker image
@@ -238,9 +310,3 @@ go build -o wireguard-manager
 ## License
 
 MIT. See [LICENSE](https://github.com/swissmakers/wireguard-manager/blob/master/LICENSE).
-
-## Support
-
-If you like the project and want to support it, you can *buy me a coffee* ☕
-
-<a href="https://www.buymeacoffee.com/khanhngo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>

@@ -30,9 +30,11 @@ var (
 	appVersion = "development"
 	gitCommit  = "N/A"
 	gitRef     = "N/A"
-	buildTime  = fmt.Sprintf(time.Now().UTC().Format("01-02-2006 15:04:05"))
+	buildTime  = time.Now().UTC().Format("01-02-2006 15:04:05")
+
 	// configuration variables
 	flagDisableLogin             = false
+	flagProxy                    = false
 	flagBindAddress              = "0.0.0.0:5000"
 	flagSmtpHostname             = "127.0.0.1"
 	flagSmtpPort                 = 25
@@ -77,6 +79,7 @@ var embeddedAssets embed.FS
 func init() {
 	// command-line flags and env variables
 	flag.BoolVar(&flagDisableLogin, "disable-login", util.LookupEnvOrBool("DISABLE_LOGIN", flagDisableLogin), "Disable authentication on the app. This is potentially dangerous.")
+	flag.BoolVar(&flagProxy, "proxy", util.LookupEnvOrBool("PROXY", flagProxy), "Behind a proxy. Use X-FORWARDED-FOR for failed login logging")
 	flag.StringVar(&flagBindAddress, "bind-address", util.LookupEnvOrString("BIND_ADDRESS", flagBindAddress), "Address:Port to which the app will be bound.")
 	flag.StringVar(&flagSmtpHostname, "smtp-hostname", util.LookupEnvOrString("SMTP_HOSTNAME", flagSmtpHostname), "SMTP Hostname")
 	flag.IntVar(&flagSmtpPort, "smtp-port", util.LookupEnvOrInt("SMTP_PORT", flagSmtpPort), "SMTP Port")
@@ -126,6 +129,7 @@ func init() {
 
 	// update runtime config
 	util.DisableLogin = flagDisableLogin
+	util.Proxy = flagProxy
 	util.BindAddress = flagBindAddress
 	util.SmtpHostname = flagSmtpHostname
 	util.SmtpPort = flagSmtpPort

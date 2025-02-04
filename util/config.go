@@ -10,6 +10,7 @@ import (
 // Runtime config
 var (
 	DisableLogin       bool
+	Proxy              bool
 	BindAddress        string
 	SmtpHostname       string
 	SmtpPort           int
