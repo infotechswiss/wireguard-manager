@@ -30,7 +30,7 @@ import (
 	"github.com/swissmakers/wireguard-manager/util"
 )
 
-var usernameRegexp = regexp.MustCompile("^\\w[\\w\\-.]*$")
+var usernameRegexp = regexp.MustCompile(`^\w[\w\-.]*$`)
 
 // Health check handler
 func Health() echo.HandlerFunc {
@@ -64,7 +64,10 @@ func Login(db store.IStore) echo.HandlerFunc {
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Bad post data"})
 		}
-
+		ip := c.Request().RemoteAddr
+		if util.Proxy {
+			ip = c.Request().Header.Get("X-FORWARDED-FOR")
+		}
 		username := data["username"].(string)
 		password := data["password"].(string)
 		rememberMe := data["rememberMe"].(bool)
@@ -75,7 +78,7 @@ func Login(db store.IStore) echo.HandlerFunc {
 
 		dbuser, err := db.GetUserByName(username)
 		if err != nil {
-			log.Infof("Cannot query user %s from DB", username)
+			log.Warnf("Invalid credentials. Cannot query user %s from DB (%s)", username, ip)
 			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Invalid credentials"})
 		}
 
@@ -130,9 +133,11 @@ func Login(db store.IStore) echo.HandlerFunc {
 			cookie.SameSite = http.SameSiteLaxMode
 			c.SetCookie(cookie)
 
+			log.Infof("Logged in successfully user %s (%s)", username, ip)
 			return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Logged in successfully"})
 		}
 
+		log.Warnf("Invalid credentials user %s (%s)", username, ip)
 		return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{false, "Invalid credentials"})
 	}
 }
@@ -431,19 +436,22 @@ func NewClient(db store.IStore) echo.HandlerFunc {
 
 		// validate the input Allocation IPs
 		allocatedIPs, err := util.GetAllocatedIPs("")
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, fmt.Sprintf("%s", err)})
+		}
 		check, err := util.ValidateIPAllocation(server.Interface.Addresses, allocatedIPs, client.AllocatedIPs)
 		if !check {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, fmt.Sprintf("%s", err)})
 		}
 
 		// validate the input AllowedIPs
-		if util.ValidateAllowedIPs(client.AllowedIPs) == false {
+		if !util.ValidateAllowedIPs(client.AllowedIPs) {
 			log.Warnf("Invalid Allowed IPs input from user: %v", client.AllowedIPs)
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Allowed IPs must be in CIDR format"})
 		}
 
 		// validate extra AllowedIPs
-		if util.ValidateExtraAllowedIPs(client.ExtraAllowedIPs) == false {
+		if !util.ValidateExtraAllowedIPs(client.ExtraAllowedIPs) {
 			log.Warnf("Invalid Extra AllowedIPs input from user: %v", client.ExtraAllowedIPs)
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Extra AllowedIPs must be in CIDR format"})
 		}
@@ -509,7 +517,7 @@ func NewClient(db store.IStore) echo.HandlerFunc {
 				false, err.Error(),
 			})
 		}
-		log.Infof("Created wireguard client: %v", client)
+		log.Infof("Created wireguard client: %v", client.Name)
 
 		return c.JSON(http.StatusOK, client)
 	}
@@ -653,18 +661,21 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		client := *clientData.Client
 		// validate the input Allocation IPs
 		allocatedIPs, err := util.GetAllocatedIPs(client.ID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, fmt.Sprintf("%s", err)})
+		}
 		check, err := util.ValidateIPAllocation(server.Interface.Addresses, allocatedIPs, _client.AllocatedIPs)
 		if !check {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, fmt.Sprintf("%s", err)})
 		}
 
 		// validate the input AllowedIPs
-		if util.ValidateAllowedIPs(_client.AllowedIPs) == false {
+		if !util.ValidateAllowedIPs(_client.AllowedIPs) {
 			log.Warnf("Invalid Allowed IPs input from user: %v", _client.AllowedIPs)
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Allowed IPs must be in CIDR format"})
 		}
 
-		if util.ValidateExtraAllowedIPs(_client.ExtraAllowedIPs) == false {
+		if !util.ValidateExtraAllowedIPs(_client.ExtraAllowedIPs) {
 			log.Warnf("Invalid Allowed IPs input from user: %v", _client.ExtraAllowedIPs)
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Extra Allowed IPs must be in CIDR format"})
 		}
@@ -726,7 +737,7 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		if err := db.SaveClient(client); err != nil {
 			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, err.Error()})
 		}
-		log.Infof("Updated client information successfully => %v", client)
+		log.Infof("Updated client information successfully => %v", client.Name)
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Updated client successfully"})
 	}
@@ -821,7 +832,7 @@ func RemoveClient(db store.IStore) echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Cannot delete client from database"})
 		}
 
-		log.Infof("Removed wireguard client: %v", client)
+		log.Infof("Removed wireguard client: %v", client.ID)
 		return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Client removed"})
 	}
 }
@@ -849,7 +860,7 @@ func WireGuardServerInterfaces(db store.IStore) echo.HandlerFunc {
 		c.Bind(&serverInterface)
 
 		// validate the input addresses
-		if util.ValidateServerAddresses(serverInterface.Addresses) == false {
+		if !util.ValidateServerAddresses(serverInterface.Addresses) {
 			log.Warnf("Invalid server interface addresses input from user: %v", serverInterface.Addresses)
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Interface IP address must be in CIDR format"})
 		}
@@ -861,7 +872,7 @@ func WireGuardServerInterfaces(db store.IStore) echo.HandlerFunc {
 		if err := db.SaveServerInterface(serverInterface); err != nil {
 			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Interface IP address must be in CIDR format"})
 		}
-		log.Infof("Updated wireguard server interfaces settings: %v", serverInterface)
+		log.Infof("Updated wireguard server interfaces settings: %v", serverInterface.Addresses)
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Updated interface addresses successfully"})
 	}
@@ -1013,7 +1024,7 @@ func GlobalSettingSubmit(db store.IStore) echo.HandlerFunc {
 		c.Bind(&globalSettings)
 
 		// validate the input dns server list
-		if util.ValidateIPAddressList(globalSettings.DNSServers) == false {
+		if !util.ValidateIPAndSearchDomainAddressList(globalSettings.DNSServers) {
 			log.Warnf("Invalid DNS server list input from user: %v", globalSettings.DNSServers)
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{false, "Invalid DNS server address"})
 		}
