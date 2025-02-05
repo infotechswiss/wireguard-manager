@@ -28,3 +28,6 @@ node_modules/
 # Examples
 examples/docker-compose/config
 examples/docker-compose/db
+
+#Dev paths
+templates/_dev/
