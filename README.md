@@ -94,7 +94,8 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
        vim \
        container-tools \
        golang \
-       yarnpkg
+       yarnpkg \
+       npm
    ```
 
 4. **(Optional) Install specific Golang RPMs**:  
@@ -113,14 +114,17 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
    git clone https://github.com/swissmakers/wireguard-manager.git /opt/wireguard-manager
    ```
 
-6. **Create a dedicated WireGuard user**:
+6. **Create a dedicated WireGuard user and config**:
    ```bash
    useradd -m -r -s /bin/false -d /var/lib/wireguard wireguard
+   touch /etc/wireguard/wg0.conf
    ```
 
-7. **Create and adjust permissions for the WireGuard config**:
+7. **Adjust permissions for the WireGuard configuration**:
    ```bash
-   touch /etc/wireguard/wg0.conf
+   chmod 750 /etc/wireguard
+   chown root:wireguard /etc/wireguard
+   setfacl -m u:wireguard:rx /etc/wireguard
    setfacl -m u:wireguard:rw /etc/wireguard/wg0.conf
    ```
 
@@ -128,12 +132,11 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
    For example, place it in `/opt/wireguard_environment.conf` (or any path you prefer):
    ```bash
    vim /opt/wireguard_environment.conf
-   chown wireguard:wireguard /opt/wireguard_environment.conf
    ```
    Sample contents:
    ```ini
    BASE_PATH="/"
-   BIND_ADDRESS="127.0.0.1:5000"
+   BIND_ADDRESS="0.0.0.0:5000"
    SESSION_SECRET="**********************************"
    WGM_USERNAME="admin"
    WGM_PASSWORD="**********************************"
@@ -196,7 +199,7 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
     cd /opt/wireguard-manager
     ./prepare_assets.sh
     go build -o wireguard-manager
-    chown -R wireguard:wireguard /opt/wireguard-manager /opt/wireguard_environment.conf
+    chown -R wireguard:wireguard /opt/wireguard_environment.conf /etc/wireguard/wg0.conf
     ```
 
 12. If you also using SELinux keep that in mind as well. There are some additionals settings needed. (Will be documented later.)

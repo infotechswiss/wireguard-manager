@@ -3,7 +3,6 @@ module github.com/swissmakers/wireguard-manager
 go 1.23
 
 require (
-	github.com/NicoNex/echotron/v3 v3.43.0
 	github.com/glendc/go-external-ip v0.1.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/labstack/echo-contrib v0.17.2
