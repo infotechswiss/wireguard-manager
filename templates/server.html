@@ -29,27 +29,27 @@ WireGuard Server Settings
                     <form role="form" id="frm_server_interface" name="frm_server_interface">
                         <div class="card-body">
                             <div class="form-group">
-                                <label for="addresses" class="control-label">Server Interface Addresses</label>
+                                <label for="addresses" class="control-label">Wireguard virtual Interface Addresses (VPN-Net)</label>
                                 <input type="text" data-role="tagsinput" class="form-control" id="addresses" value="">
                             </div>
                             <div class="form-group">
-                                <label for="listen_port">Listen Port</label>
+                                <label for="listen_port">Server Listen Port</label>
                                 <input type="text" class="form-control" id="listen_port" name="listen_port"
                                     placeholder="Listen Port" value="{{ .serverInterface.ListenPort }}">
                             </div>
                             <div class="form-group">
-                                <label for="post_up">Post Up Script</label>
+                                <label for="post_up">Optional: Post Up Script</label>
                                 <input type="text" class="form-control" id="post_up" name="post_up"
                                        placeholder="Post Up Script" value="{{ .serverInterface.PostUp }}">
                             </div>
                             <div class="form-group">
-                                <label for="pre_down">Pre Down Script</label>
+                                <label for="pre_down">Optional: Pre Down Script</label>
                                 <input type="text" class="form-control" id="pre_down" name="pre_down"
                                        placeholder="Pre Down Script" value="{{ .serverInterface.PreDown }}">
                             </div>
 
                             <div class="form-group">
-                                <label for="post_down">Post Down Script</label>
+                                <label for="post_down">Optional: Post Down Script</label>
                                 <input type="text" class="form-control" id="post_down" name="post_down"
                                        placeholder="Post Down Script" value="{{ .serverInterface.PostDown }}">
                             </div>
@@ -67,7 +67,7 @@ WireGuard Server Settings
             <div class="col-md-6">
                 <div class="card card-danger">
                     <div class="card-header">
-                        <h3 class="card-title">Key Pair</h3>
+                        <h3 class="card-title">Key Pair (Don't regenerate if server already in use!)</h3>
                     </div>
                     <!-- /.card-header -->
                     <!-- form start -->
