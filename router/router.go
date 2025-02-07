@@ -101,11 +101,6 @@ func New(tmplDir fs.FS, extraData map[string]interface{}, secret [64]byte) *echo
 		log.Fatal(err)
 	}
 
-	tmplWakeOnLanHostsString, err := util.StringFromEmbedFile(tmplDir, "wake_on_lan_hosts.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// create template list
 	funcs := template.FuncMap{
 		"StringsJoin": strings.Join,
@@ -118,7 +113,6 @@ func New(tmplDir fs.FS, extraData map[string]interface{}, secret [64]byte) *echo
 	templates["global_settings.html"] = template.Must(template.New("global_settings").Funcs(funcs).Parse(tmplBaseString + tmplGlobalSettingsString))
 	templates["users_settings.html"] = template.Must(template.New("users_settings").Funcs(funcs).Parse(tmplBaseString + tmplUsersSettingsString))
 	templates["status.html"] = template.Must(template.New("status").Funcs(funcs).Parse(tmplBaseString + tmplStatusString))
-	templates["wake_on_lan_hosts.html"] = template.Must(template.New("wake_on_lan_hosts").Funcs(funcs).Parse(tmplBaseString + tmplWakeOnLanHostsString))
 
 	lvl, err := util.ParseLogLevel(util.LookupEnvOrString(util.LogLevel, "INFO"))
 	if err != nil {
