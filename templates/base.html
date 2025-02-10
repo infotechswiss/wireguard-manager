@@ -27,6 +27,91 @@
     <!-- START: On page css -->
     {{template "top_css" .}}
     <!-- END: On page css -->
+     <style>
+        /* Base Dark Mode Styles */
+        body, .content-wrapper {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .navbar, .main-sidebar, .sidebar {
+            background-color: #1e1e1e;
+        }
+        .nav-link, .navbar-nav .nav-item .nav-link {
+            color: #b0b0b0;
+        }
+        .navbar-light .navbar-nav .nav-link {
+            color: #b0b0b0;
+        }
+        .navbar-light .navbar-nav .nav-link:hover {
+            color: #ffffff;
+        }
+        .main-footer {
+            background-color: #1c1c1c;
+            color: #e0e0e0;
+        }
+        .sidebar-dark-primary .nav-link {
+            color: #e0e0e0;
+        }
+        .sidebar-dark-primary .nav-link:hover {
+            background-color: #444444;
+        }
+        .card {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+        }
+        /* Dark mode for buttons */
+        .btn-outline-primary {
+            border-color: #4e73df;
+            color: #4e73df;
+        }
+        .btn-outline-primary:hover {
+            background-color: #4e73df;
+            color: #ffffff;
+        }
+        .btn-outline-danger {
+            border-color: #e74a3b;
+            color: #e74a3b;
+        }
+        .btn-outline-danger:hover {
+            background-color: #e74a3b;
+            color: #ffffff;
+        }
+        /* Modify inputs and form elements */
+        input, select, textarea, .form-control, .form-control:disabled, div.tagsinput {
+            background-color: #333333;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        input::placeholder, select::placeholder, textarea::placeholder {
+            color: #b0b0b0;
+        }
+        input[type="checkbox"], input[type="radio"] {
+            background-color: #444;
+        }
+        /* Modal dark mode */
+        .modal-content {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+        }
+        .modal-header {
+            border-bottom: 1px solid #555;
+        }
+        .modal-footer {
+            border-top: 1px solid #555;
+        }
+        /* Dark mode for the sidebar active state */
+        .nav-sidebar .nav-link.active {
+            background-color: #444;
+        }
+        /* Table dark mode */
+        table {
+            background-color: #2a2a2a;
+        }
+        table th, table td {
+            color: #e0e0e0;
+            border: 1px solid #444;
+        }
+     </style>
 </head>
 
 <body class="hold-transition sidebar-mini">
@@ -99,13 +184,13 @@
                         {{if .baseData.CurrentUser}}
 
                         {{if .baseData.Admin}}
-                        <a href="{{.basePath}}/profile" class="d-block">Administrator: {{.baseData.CurrentUser}}</a>
+                        <a href="{{.basePath}}/profile" class="d-block">My Account: {{.baseData.CurrentUser}}</a>
                         {{else}}
-                        <a href="{{.basePath}}/profile" class="d-block">Manager: {{.baseData.CurrentUser}}</a>
+                        <a href="{{.basePath}}/profile" class="d-block">My Account: {{.baseData.CurrentUser}}</a>
                         {{end}}
 
                         {{else}}
-                        <a href="#" class="d-block">Administrator</a>
+                        <a href="#" class="d-block">My Account</a>
                         {{end}}
                     </div>
                 </div>
@@ -118,12 +203,20 @@
                             <a href="{{.basePath}}/" class="nav-link {{if eq .baseData.Active ""}}active{{end}}">
                                 <i class="nav-icon fas fa-user-secret"></i>
                                 <p>
-                                    WireGuard Clients
+                                    VPN Clients
                                 </p>
                             </a>
                         </li>
-
+                        <li class="nav-item">
+                            <a href="{{.basePath}}/status" class="nav-link {{if eq .baseData.Active "status" }}active{{end}}">
+                                <i class="nav-icon fas fa-signal"></i>
+                                <p>
+                                    VPN Connected
+                                </p>
+                            </a>
+                        </li>
                         {{if .baseData.Admin}}
+                        <li class="nav-header">SETTINGS</li>
                         <li class="nav-item">
                             <a href="{{.basePath}}/wg-server" class="nav-link {{if eq .baseData.Active "wg-server" }}active{{end}}">
                                 <i class="nav-icon fas fa-server"></i>
@@ -132,14 +225,11 @@
                                 </p>
                             </a>
                         </li>
-
-
-                        <li class="nav-header">SETTINGS</li>
                         <li class="nav-item">
                             <a href="{{.basePath}}/global-settings" class="nav-link {{if eq .baseData.Active "global-settings" }}active{{end}}">
                                 <i class="nav-icon fas fa-cog"></i>
                                 <p>
-                                    Global Settings
+                                    Client Config Settings
                                 </p>
                             </a>
                         </li>
@@ -148,39 +238,12 @@
                             <a href="{{.basePath}}/users-settings" class="nav-link {{if eq .baseData.Active "users-settings" }}active{{end}}">
                             <i class="nav-icon fas fa-cog"></i>
                             <p>
-                                Users Settings
+                                WGM User Accounts
                             </p>
                             </a>
                         </li>
                         {{end}}
                         {{end}}
-
-                        <li class="nav-header">UTILITIES</li>
-                        <li class="nav-item">
-                            <a href="{{.basePath}}/status" class="nav-link {{if eq .baseData.Active "status" }}active{{end}}">
-                                <i class="nav-icon fas fa-signal"></i>
-                                <p>
-                                    Status
-                                </p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="{{.basePath}}/wake_on_lan_hosts" class="nav-link {{if eq .baseData.Active "wake_on_lan_hosts" }}active{{end}}">
-                                <i class="nav-icon fas  fa-solid fa-power-off"></i>
-                                <p>
-                                    WoL Hosts
-                                </p>
-                            </a>
-                        </li>
-                        <li class="nav-header">ABOUT</li>
-                        <li class="nav-item">
-                            <a href="{{.basePath}}/about" class="nav-link {{if eq .baseData.Active "about" }}active{{end}}">
-                            <i class="nav-icon fas  fa-solid fa-id-card"></i>
-                            <p>
-                                About
-                            </p>
-                            </a>
-                        </li>
                     </ul>
                 </nav>
                 <!-- /.sidebar-menu -->
