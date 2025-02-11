@@ -1,6 +1,6 @@
 package handler
 
 type jsonHTTPResponse struct {
-	Status  bool   `json:"status"`
+	Success bool   `json:"success"`
 	Message string `json:"message"`
 }

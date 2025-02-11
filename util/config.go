@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-// Runtime config
+// Global runtime configuration variables.
 var (
 	DisableLogin       bool
 	Proxy              bool
@@ -27,10 +27,11 @@ var (
 	SessionMaxDuration int64
 	WgConfTemplate     string
 	BasePath           string
-	SubnetRanges       map[string]([]*net.IPNet)
-	SubnetRangesOrder  []string
+	SubnetRanges       map[string][]*net.IPNet // Mapping of range name to slice of *net.IPNet
+	SubnetRangesOrder  []string                // Order of subnet range names
 )
 
+// Default values and environment variable names.
 const (
 	DefaultUsername                        = "admin"
 	DefaultPassword                        = "admin"
@@ -40,7 +41,7 @@ const (
 	DefaultDNS                             = "1.1.1.1"
 	DefaultMTU                             = 1450
 	DefaultPersistentKeepalive             = 15
-	DefaultFirewallMark                    = "0xca6c" // i.e. 51820
+	DefaultFirewallMark                    = "0xca6c" // e.g. 51820
 	DefaultTable                           = "auto"
 	DefaultConfigFilePath                  = "/etc/wireguard/wg0.conf"
 	UsernameEnvVar                         = "WGM_USERNAME"
@@ -67,51 +68,69 @@ const (
 	DefaultClientEnableAfterCreationEnvVar = "WGM_DEFAULT_CLIENT_ENABLE_AFTER_CREATION"
 )
 
+// ParseBasePath ensures that the base path starts with a slash and does not end with one.
 func ParseBasePath(basePath string) string {
 	if !strings.HasPrefix(basePath, "/") {
 		basePath = "/" + basePath
 	}
-	basePath = strings.TrimSuffix(basePath, "/")
-	return basePath
+	return strings.TrimSuffix(basePath, "/")
 }
 
-func ParseSubnetRanges(subnetRangesStr string) map[string]([]*net.IPNet) {
-	subnetRanges := map[string]([]*net.IPNet){}
+// ParseSubnetRanges parses a string containing subnet ranges into a map of subnet ranges.
+// The expected format is:
+//
+//	rangeName:CIDR1,CIDR2;rangeName2:CIDR3,CIDR4
+//
+// It returns a map from the range name to a slice of *net.IPNet and populates SubnetRangesOrder.
+func ParseSubnetRanges(subnetRangesStr string) map[string][]*net.IPNet {
+	subnetRanges := make(map[string][]*net.IPNet)
+	// Reset the global order.
+	SubnetRangesOrder = []string{}
+
 	if subnetRangesStr == "" {
 		return subnetRanges
 	}
-	cidrSet := map[string]bool{}
+
+	// Clean the input string.
 	subnetRangesStr = strings.TrimSpace(subnetRangesStr)
 	subnetRangesStr = strings.Trim(subnetRangesStr, ";:,")
 	ranges := strings.Split(subnetRangesStr, ";")
+
+	// Use a set to track duplicate CIDRs.
+	cidrSet := make(map[string]bool)
+
 	for _, rng := range ranges {
 		rng = strings.TrimSpace(rng)
-		rngSpl := strings.Split(rng, ":")
-		if len(rngSpl) != 2 {
+		parts := strings.Split(rng, ":")
+		if len(parts) != 2 {
 			log.Warnf("Unable to parse subnet range: %v. Skipped.", rng)
 			continue
 		}
-		rngName := strings.TrimSpace(rngSpl[0])
-		subnetRanges[rngName] = make([]*net.IPNet, 0)
-		cidrs := strings.Split(rngSpl[1], ",")
+		rangeName := strings.TrimSpace(parts[0])
+		subnetRanges[rangeName] = []*net.IPNet{}
+
+		// Split the CIDRs by comma.
+		cidrs := strings.Split(parts[1], ",")
 		for _, cidr := range cidrs {
 			cidr = strings.TrimSpace(cidr)
-			_, net, err := net.ParseCIDR(cidr)
+			_, ipnet, err := net.ParseCIDR(cidr)
 			if err != nil {
-				log.Warnf("[%v] Unable to parse CIDR: %v. Skipped.", rngName, cidr)
+				log.Warnf("[%v] Unable to parse CIDR: %v. Skipped.", rangeName, cidr)
 				continue
 			}
-			if cidrSet[net.String()] {
-				log.Warnf("[%v] CIDR already exists: %v. Skipped.", rngName, net.String())
+			if cidrSet[ipnet.String()] {
+				log.Warnf("[%v] CIDR already exists: %v. Skipped.", rangeName, ipnet.String())
 				continue
 			}
-			cidrSet[net.String()] = true
-			subnetRanges[rngName] = append(subnetRanges[rngName], net)
+			cidrSet[ipnet.String()] = true
+			subnetRanges[rangeName] = append(subnetRanges[rangeName], ipnet)
 		}
-		if len(subnetRanges[rngName]) == 0 {
-			delete(subnetRanges, rngName)
+
+		// Remove the range if no valid CIDRs were found.
+		if len(subnetRanges[rangeName]) == 0 {
+			delete(subnetRanges, rangeName)
 		} else {
-			SubnetRangesOrder = append(SubnetRangesOrder, rngName)
+			SubnetRangesOrder = append(SubnetRangesOrder, rangeName)
 		}
 	}
 	return subnetRanges

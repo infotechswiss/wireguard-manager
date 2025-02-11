@@ -27,7 +27,7 @@
     <!-- START: On page css -->
     {{template "top_css" .}}
     <!-- END: On page css -->
-     <style>
+    <style>
         /* Base Dark Mode Styles */
         body, .content-wrapper {
             background-color: #121212;
@@ -78,15 +78,27 @@
         }
         /* Modify inputs and form elements */
         input, select, textarea, .form-control, .form-control:disabled, div.tagsinput {
-            background-color: #333333;
-            color: #e0e0e0;
-            border: 1px solid #555;
+            background-color: #333333 !important;
+            color: #e0e0e0 !important;
+            border: 1px solid #555 !important;
         }
         input::placeholder, select::placeholder, textarea::placeholder {
             color: #b0b0b0;
         }
         input[type="checkbox"], input[type="radio"] {
             background-color: #444;
+        }
+        .form-control:focus {
+            background-color: #555555;
+            border-color: #80bdff;
+        }
+        div.tagsinput span.tag {
+            border: 1px solid #22923c;
+            background: #181b16;
+            color: #35d85b;
+        }
+        div.tagsinput span.tag a {
+            color: #35d85b;
         }
         /* Modal dark mode */
         .modal-content {
@@ -111,7 +123,7 @@
             color: #e0e0e0;
             border: 1px solid #444;
         }
-     </style>
+    </style>
 </head>
 
 <body class="hold-transition sidebar-mini">
@@ -153,11 +165,9 @@
             <!-- Right navbar links -->
             <div class="navbar-nav ml-auto">
                 <button style="margin-left: 0.5em;" type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal"
-                    data-target="#modal_new_client"><i class="nav-icon fas fa-plus"></i> New
-                    Client</button>
+                    data-target="#modal_new_client"><i class="nav-icon fas fa-plus"></i> New Client</button>
                 <button id="apply-config-button" style="margin-left: 0.5em; display: none;" type="button" class="btn btn-outline-danger btn-sm" data-toggle="modal"
-                    data-target="#modal_apply_config"><i class="nav-icon fas fa-check"></i> Apply
-                    Config</button>
+                    data-target="#modal_apply_config"><i class="nav-icon fas fa-check"></i> Apply Config</button>
                 {{if .baseData.CurrentUser}}
                 <button onclick="location.href='{{.basePath}}/logout';" style="margin-left: 0.5em;" type="button"
                     class="btn btn-outline-danger btn-sm"><i class="nav-icon fas fa-sign-out-alt"></i> Logout</button>
@@ -182,13 +192,7 @@
                     </div>
                     <div class="info">
                         {{if .baseData.CurrentUser}}
-
-                        {{if .baseData.Admin}}
                         <a href="{{.basePath}}/profile" class="d-block">My Account: {{.baseData.CurrentUser}}</a>
-                        {{else}}
-                        <a href="{{.basePath}}/profile" class="d-block">My Account: {{.baseData.CurrentUser}}</a>
-                        {{end}}
-
                         {{else}}
                         <a href="#" class="d-block">My Account</a>
                         {{end}}
@@ -202,17 +206,13 @@
                         <li class="nav-item">
                             <a href="{{.basePath}}/" class="nav-link {{if eq .baseData.Active ""}}active{{end}}">
                                 <i class="nav-icon fas fa-user-secret"></i>
-                                <p>
-                                    VPN Clients
-                                </p>
+                                <p>VPN Clients</p>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="{{.basePath}}/status" class="nav-link {{if eq .baseData.Active "status" }}active{{end}}">
                                 <i class="nav-icon fas fa-signal"></i>
-                                <p>
-                                    VPN Connected
-                                </p>
+                                <p>VPN Connected</p>
                             </a>
                         </li>
                         {{if .baseData.Admin}}
@@ -220,26 +220,20 @@
                         <li class="nav-item">
                             <a href="{{.basePath}}/wg-server" class="nav-link {{if eq .baseData.Active "wg-server" }}active{{end}}">
                                 <i class="nav-icon fas fa-server"></i>
-                                <p>
-                                    WireGuard Server
-                                </p>
+                                <p>WireGuard Server</p>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="{{.basePath}}/global-settings" class="nav-link {{if eq .baseData.Active "global-settings" }}active{{end}}">
                                 <i class="nav-icon fas fa-cog"></i>
-                                <p>
-                                    Client Config Settings
-                                </p>
+                                <p>Client Config Settings</p>
                             </a>
                         </li>
                         {{if not .loginDisabled}}
                         <li class="nav-item">
                             <a href="{{.basePath}}/users-settings" class="nav-link {{if eq .baseData.Active "users-settings" }}active{{end}}">
-                            <i class="nav-icon fas fa-cog"></i>
-                            <p>
-                                WGM User Accounts
-                            </p>
+                                <i class="nav-icon fas fa-cog"></i>
+                                <p>WGM User Accounts</p>
                             </a>
                         </li>
                         {{end}}
@@ -262,6 +256,7 @@
                     </div>
                     <form name="frm_new_client" id="frm_new_client">
                         <div class="modal-body">
+                            <!-- Form fields for new client go here -->
                             <div class="form-group">
                                 <label for="client_name" class="control-label">Name</label>
                                 <input type="text" class="form-control" id="client_name" name="client_name">
@@ -272,8 +267,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="subnet_ranges" class="control-label">Subnet range</label>
-                                <select id="subnet_ranges" class="select2"
-                                    data-placeholder="Select a subnet range" style="width: 100%;">
+                                <select id="subnet_ranges" class="select2" data-placeholder="Select a subnet range" style="width: 100%;">
                                 </select>
                             </div>
                             <div class="form-group">
@@ -282,22 +276,17 @@
                             </div>
                             <div class="form-group">
                                 <label for="client_allowed_ips" class="control-label">Allowed IPs
-                                    <i class="fas fa-info-circle" data-toggle="tooltip"
-                                       data-original-title="Specify a list of addresses that will get routed to the
-                                       server. These addresses will be included in 'AllowedIPs' of client config">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-original-title="Specify a list of addresses that will get routed to the server. These addresses will be included in 'AllowedIPs' of client config">
                                     </i>
                                 </label>
-                                <input type="text" data-role="tagsinput" class="form-control" id="client_allowed_ips"
-                                    value="{{ StringsJoin .client_defaults.AllowedIps "," }}">
+                                <input type="text" data-role="tagsinput" class="form-control" id="client_allowed_ips" value="{{ StringsJoin .client_defaults.AllowedIPs "," }}">
                             </div>
                             <div class="form-group">
                                 <label for="client_extra_allowed_ips" class="control-label">Extra Allowed IPs
-                                    <i class="fas fa-info-circle" data-toggle="tooltip"
-                                       data-original-title="Specify a list of addresses that will get routed to the
-                                       client. These addresses will be included in 'AllowedIPs' of WG server config">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-original-title="Specify a list of addresses that will get routed to the client. These addresses will be included in 'AllowedIPs' of WG server config">
                                     </i>
                                 </label>
-                                <input type="text" data-role="tagsinput" class="form-control" id="client_extra_allowed_ips" value="{{ StringsJoin .client_defaults.ExtraAllowedIps "," }}">
+                                <input type="text" data-role="tagsinput" class="form-control" id="client_extra_allowed_ips" value="{{ StringsJoin .client_defaults.ExtraAllowedIPs "," }}">
                             </div>
                             <div class="form-group">
                                 <label for="client_endpoint" class="control-label">Endpoint</label>
@@ -306,43 +295,32 @@
                             <div class="form-group">
                                 <div class="icheck-primary d-inline">
                                     <input type="checkbox" id="use_server_dns" {{ if .client_defaults.UseServerDNS }}checked{{ end }}>
-                                    <label for="use_server_dns">
-                                        Use server DNS
-                                    </label>
+                                    <label for="use_server_dns">Use server DNS</label>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="icheck-primary d-inline">
                                     <input type="checkbox" id="enabled" {{ if .client_defaults.EnableAfterCreation }}checked{{ end }}>
-                                    <label for="enabled">
-                                        Enable after creation
-                                    </label>
+                                    <label for="enabled">Enable after creation</label>
                                 </div>
                             </div>
                             <details>
-                                <summary><strong>Public and Preshared Keys</strong>
-                                    <i class="fas fa-info-circle" data-toggle="tooltip"
-                                       data-original-title="If you don't want to let the server generate and store the
-                                       client's private key, you can manually specify its public and preshared key here
-                                       . Note: QR code will not be generated">
+                                <summary>
+                                    <strong>Public and Preshared Keys</strong>
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-original-title="If you don't want the server to generate and store the client's private key, you can manually specify its public and preshared key here. Note: QR code will not be generated">
                                     </i>
                                 </summary>
                                 <div class="form-group" style="margin-top: 1rem">
-                                    <label for="client_public_key" class="control-label">
-                                        Public Key
-                                    </label>
+                                    <label for="client_public_key" class="control-label">Public Key</label>
                                     <input type="text" class="form-control" id="client_public_key" name="client_public_key" placeholder="Autogenerated" aria-invalid="false">
                                 </div>
                                 <div class="form-group">
-                                    <label for="client_preshared_key" class="control-label">
-                                        Preshared Key
-                                    </label>
+                                    <label for="client_preshared_key" class="control-label">Preshared Key</label>
                                     <input type="text" class="form-control" id="client_preshared_key" name="client_preshared_key" placeholder="Autogenerated - enter &quot;-&quot; to skip generation">
                                 </div>
                             </details>
                             <details style="margin-top: 0.5rem;">
-                                <summary><strong>Additional configuration</strong>
-                                </summary>
+                                <summary><strong>Additional configuration</strong></summary>
                                 <div class="form-group">
                                     <label for="additional_notes" class="control-label">Notes</label>
                                     <textarea class="form-control" style="min-height: 6rem;" id="additional_notes" name="additional_notes" placeholder="Additional notes about this client"></textarea>
@@ -407,8 +385,7 @@
             <div class="float-right d-none d-sm-block">
                 <b>Version</b> {{ .appVersion }}
             </div>
-            <strong>Copyright &copy; <script>document.write(new Date().getFullYear())</script> <a href="https://github.com/swissmakers/wireguard-manager">WireGuard Manager</a>.</strong> All rights
-            reserved.
+            <strong>Copyright &copy; <script>document.write(new Date().getFullYear())</script> <a href="https://github.com/swissmakers/wireguard-manager">WireGuard Manager</a>.</strong> All rights reserved.
         </footer>
 
         <!-- Control Sidebar -->
@@ -451,50 +428,54 @@
             `, 'toastrToastStyleFix')
 
             toastr.options.closeDuration = 100;
-            // toastr.options.timeOut = 10000;
             toastr.options.positionClass = 'toast-top-right-fix';
 
-            updateApplyConfigVisibility()
-
+            // Initial call, and then poll every 5 seconds for config changes
+            updateApplyConfigVisibility();
+            setInterval(updateApplyConfigVisibility, 5000);
         });
 
         function addGlobalStyle(css, id) {
             if (!document.querySelector('#' + id)) {
-                let head = document.head
-                if (!head) { return }
-                let style = document.createElement('style')
-                style.type = 'text/css'
-                style.id = id
-                style.innerHTML = css
-                head.appendChild(style)
+                let head = document.head;
+                if (!head) { return; }
+                let style = document.createElement('style');
+                style.type = 'text/css';
+                style.id = id;
+                style.innerHTML = css;
+                head.appendChild(style);
             }
         }
 
         function updateApplyConfigVisibility() {
-                $.ajax({
-                    cache: false,
-                    method: 'GET',
-                    url: '{{.basePath}}/test-hash',
-                    dataType: 'json',
-                    contentType: "application/json",
-                    success: function(data) {
-                        if (data.status) {
-                            $("#apply-config-button").show()
-                        }
-                        else
-                        {
-                            $("#apply-config-button").hide()
-                        }
-                    },
-                    error: function(jqXHR, exception) {
-                        const responseJson = jQuery.parseJSON(jqXHR.responseText);
-                        toastr.error(responseJson['message']);
+            $.ajax({
+                cache: false,
+                method: 'GET',
+                url: '{{.basePath}}/test-hash',
+                dataType: 'json',
+                contentType: "application/json",
+                success: function(data) {
+                    console.log("Config check response:", data);
+                    // Check the 'success' property returned by the endpoint.
+                    if (data.success) {
+                        $("#apply-config-button").show();
+                    } else {
+                        $("#apply-config-button").hide();
                     }
-                });
+                },
+                error: function(jqXHR, exception) {
+                    try {
+                        const responseJson = JSON.parse(jqXHR.responseText);
+                        toastr.error(responseJson['message']);
+                    } catch (e) {
+                        toastr.error("Error checking config changes.");
+                    }
+                }
+            });
         }
+
         
-        // populateClient function for render new client info
-        // on the client page.
+        // populateClient function for render new client info on the client page.
         function populateClient(client_id) {
             $.ajax({
                 cache: false,
@@ -506,44 +487,42 @@
                     renderClientList([resp]);
                 },
                 error: function (jqXHR, exception) {
-                    const responseJson = jQuery.parseJSON(jqXHR.responseText);
-                    toastr.error(responseJson['message']);
+                    try {
+                        const responseJson = JSON.parse(jqXHR.responseText);
+                        toastr.error(responseJson['message']);
+                    } catch (e) {
+                        toastr.error("Error loading client data.");
+                    }
                 }
             });
         }
 
-        // submitNewClient function for new client form submission
+        // submitNewClient function for new client form submission.
         function submitNewClient() {
             const name = $("#client_name").val();
             const email = $("#client_email").val();
             const allocated_ips = $("#client_allocated_ips").val().split(",");
             const allowed_ips = $("#client_allowed_ips").val().split(",");
             const endpoint = $("#client_endpoint").val();
-            let use_server_dns = false;
-            let extra_allowed_ips = [];
-
-            if ($("#client_extra_allowed_ips").val() !== "") {
-                extra_allowed_ips = $("#client_extra_allowed_ips").val().split(",");
-            }
-
-
-            if ($("#use_server_dns").is(':checked')){
-                use_server_dns = true;
-            }
-
-            let enabled = false;
-
-            if ($("#enabled").is(':checked')){
-                enabled = true;
-            }
+            const use_server_dns = $("#use_server_dns").is(':checked');
+            const enabled = $("#enabled").is(':checked');
             const public_key = $("#client_public_key").val();
             const preshared_key = $("#client_preshared_key").val();
-            
             const additional_notes = $("#additional_notes").val();
 
-            const data = {"name": name, "email": email, "allocated_ips": allocated_ips, "allowed_ips": allowed_ips,
-                "extra_allowed_ips": extra_allowed_ips, "endpoint": endpoint, "use_server_dns": use_server_dns, "enabled": enabled,
-                "public_key": public_key, "preshared_key": preshared_key, "additional_notes": additional_notes};
+            const data = {
+                "name": name, 
+                "email": email, 
+                "allocated_ips": allocated_ips, 
+                "allowed_ips": allowed_ips,
+                "extra_allowed_ips": $("#client_extra_allowed_ips").val().split(","),
+                "endpoint": endpoint, 
+                "use_server_dns": use_server_dns, 
+                "enabled": enabled,
+                "public_key": public_key, 
+                "preshared_key": preshared_key, 
+                "additional_notes": additional_notes
+            };
 
             $.ajax({
                 cache: false,
@@ -555,26 +534,30 @@
                 success: function(resp) {
                     $("#modal_new_client").modal('hide');
                     toastr.success('Created new client successfully');
-                    // Update the home page (clients page) after adding successfully
+                    // Update the home page (clients page) after adding successfully.
                     if (window.location.pathname === "{{.basePath}}/") {
                         populateClient(resp.id);
                     }
-                    updateApplyConfigVisibility()
+                    updateApplyConfigVisibility();
                 },
                 error: function(jqXHR, exception) {
-                    const responseJson = jQuery.parseJSON(jqXHR.responseText);
-                    toastr.error(responseJson['message']);
+                    try {
+                        const responseJson = JSON.parse(jqXHR.responseText);
+                        toastr.error(responseJson['message']);
+                    } catch (e) {
+                        toastr.error("Error creating client.");
+                    }
                 }
             });
         }
 
-        // updateIPAllocationSuggestion function for automatically fill
-        // the IP Allocation input with suggested ip addresses
+        // updateIPAllocationSuggestion function for automatically filling
+        // the IP Allocation input with suggested IP addresses.
         function updateIPAllocationSuggestion(forceDefault = false) {
             let subnetRange = $("#subnet_ranges").select2('val');
 
             if (forceDefault || !subnetRange || subnetRange.length === 0) {
-                subnetRange = '__default_any__'
+                subnetRange = '__default_any__';
             }
             $.ajax({
                 cache: false,
@@ -584,29 +567,33 @@
                 contentType: "application/json",
                 success: function(data) {
                     const allocated_ips = $("#client_allocated_ips").val().split(",");
-                    allocated_ips.forEach(function (item, index) {
-                        $('#client_allocated_ips').removeTag(escape(item));
-                    })
-                    data.forEach(function (item, index) {
+                    allocated_ips.forEach(function (item) {
+                        $('#client_allocated_ips').removeTag(item);
+                    });
+                    data.forEach(function (item) {
                         $('#client_allocated_ips').addTag(item);
-                    })
+                    });
                 },
                 error: function(jqXHR, exception) {
                     const allocated_ips = $("#client_allocated_ips").val().split(",");
-                    allocated_ips.forEach(function (item, index) {
-                        $('#client_allocated_ips').removeTag(escape(item));
-                    })
-                    const responseJson = jQuery.parseJSON(jqXHR.responseText);
-                    toastr.error(responseJson['message']);
+                    allocated_ips.forEach(function (item) {
+                        $('#client_allocated_ips').removeTag(item);
+                    });
+                    try {
+                        const responseJson = JSON.parse(jqXHR.responseText);
+                        toastr.error(responseJson['message']);
+                    } catch (e) {
+                        toastr.error("Error suggesting IP allocation.");
+                    }
                 }
             });
         }
     </script>
     <script>
-        //Initialize Select2 Elements
-        $(".select2").select2()
+        // Initialize Select2 Elements.
+        $(".select2").select2();
 
-        // IP Allocation tag input
+        // IP Allocation tag input.
         $("#client_allocated_ips").tagsInput({
             'width': '100%',
             'height': '75%',
@@ -618,7 +605,7 @@
             'placeholderColor': '#666666'
         });
 
-        // AllowedIPs tag input
+        // AllowedIPs tag input.
         $("#client_allowed_ips").tagsInput({
             'width': '100%',
             'height': '75%',
@@ -641,7 +628,7 @@
             'placeholderColor': '#666666'
         });
 
-        // New client form validation
+        // New client form validation.
         $(document).ready(function () {
             $.validator.setDefaults({
                 submitHandler: function () {
@@ -664,18 +651,18 @@
                     error.addClass('invalid-feedback');
                     element.closest('.form-group').append(error);
                 },
-                highlight: function (element, errorClass, validClass) {
+                highlight: function (element) {
                     $(element).addClass('is-invalid');
                 },
-                unhighlight: function (element, errorClass, validClass) {
+                unhighlight: function (element) {
                     $(element).removeClass('is-invalid');
                 }
             });
         });
 
-        // New Client modal event
+        // New Client modal event.
         $(document).ready(function () {
-            $("#modal_new_client").on('shown.bs.modal', function (e) {
+            $("#modal_new_client").on('shown.bs.modal', function () {
                 $("#client_name").val("");
                 $("#client_email").val("");
                 $("#client_public_key").val("");
@@ -689,13 +676,12 @@
             });
         });
 
-        // handle subnet range select
-        $('#subnet_ranges').on('select2:select', function (e) {
-            // console.log('Selected Option: ', $("#subnet_ranges").select2('val'));
+        // Handle subnet range select.
+        $('#subnet_ranges').on('select2:select', function () {
             updateIPAllocationSuggestion();
         });
 
-        // apply_config_confirm button event
+        // apply_config_confirm button event.
         $(document).ready(function () {
             $("#apply_config_confirm").click(function () {
                 $.ajax({
@@ -705,19 +691,22 @@
                     dataType: 'json',
                     contentType: "application/json",
                     success: function(data) {
-                        updateApplyConfigVisibility()
+                        updateApplyConfigVisibility();
                         $("#modal_apply_config").modal('hide');
                         toastr.success('Applied config successfully');
                     },
-                    error: function(jqXHR, exception) {
-                        const responseJson = jQuery.parseJSON(jqXHR.responseText);
-                        toastr.error(responseJson['message']);
+                    error: function(jqXHR) {
+                        try {
+                            const responseJson = JSON.parse(jqXHR.responseText);
+                            toastr.error(responseJson['message']);
+                        } catch (e) {
+                            toastr.error("Error applying config.");
+                        }
                     }
                 });
             });
         });
     </script>
-
     <!-- START: On page script -->
     {{template "bottom_js" .}}
     <!-- END: On page script -->

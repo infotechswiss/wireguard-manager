@@ -7,46 +7,54 @@ import (
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
+// SendgridApiMail implements the Emailer interface using SendGrid's API.
 type SendgridApiMail struct {
 	apiKey   string
 	fromName string
 	from     string
 }
 
+// NewSendgridApiMail creates a new SendgridApiMail instance with the provided API key and sender information.
 func NewSendgridApiMail(apiKey, fromName, from string) *SendgridApiMail {
-	ans := SendgridApiMail{apiKey: apiKey, fromName: fromName, from: from}
-	return &ans
+	return &SendgridApiMail{
+		apiKey:   apiKey,
+		fromName: fromName,
+		from:     from,
+	}
 }
 
-func (o *SendgridApiMail) Send(toName string, to string, subject string, content string, attachments []Attachment) error {
+// Send sends an email using the SendGrid API.
+// It builds a V3Mail object with the given recipient details, subject, content, and attachments.
+func (s *SendgridApiMail) Send(toName, to, subject, content string, attachments []Attachment) error {
 	m := mail.NewV3Mail()
 
-	mailFrom := mail.NewEmail(o.fromName, o.from)
-	mailContent := mail.NewContent("text/html", content)
+	// Set sender, recipient, content, and subject.
+	mailFrom := mail.NewEmail(s.fromName, s.from)
 	mailTo := mail.NewEmail(toName, to)
-
 	m.SetFrom(mailFrom)
-	m.AddContent(mailContent)
+	m.AddContent(mail.NewContent("text/html", content))
 
 	personalization := mail.NewPersonalization()
 	personalization.AddTos(mailTo)
 	personalization.Subject = subject
-
 	m.AddPersonalizations(personalization)
 
-	toAdd := make([]*mail.Attachment, 0, len(attachments))
-	for i := range attachments {
-		var att mail.Attachment
-		encoded := base64.StdEncoding.EncodeToString(attachments[i].Data)
-		att.SetContent(encoded)
-		att.SetType("text/plain")
-		att.SetFilename(attachments[i].Name)
-		att.SetDisposition("attachment")
-		toAdd = append(toAdd, &att)
+	// Process attachments.
+	var sgAttachments []*mail.Attachment
+	for _, a := range attachments {
+		encoded := base64.StdEncoding.EncodeToString(a.Data)
+		sgAtt := mail.NewAttachment()
+		sgAtt.SetContent(encoded)
+		// Set a default content type. Adjust if you need to support other file types.
+		sgAtt.SetType("text/plain")
+		sgAtt.SetFilename(a.Name)
+		sgAtt.SetDisposition("attachment")
+		sgAttachments = append(sgAttachments, sgAtt)
 	}
+	m.AddAttachment(sgAttachments...)
 
-	m.AddAttachment(toAdd...)
-	request := sendgrid.GetRequest(o.apiKey, "/v3/mail/send", "https://api.sendgrid.com")
+	// Build and send the request.
+	request := sendgrid.GetRequest(s.apiKey, "/v3/mail/send", "https://api.sendgrid.com")
 	request.Method = "POST"
 	request.Body = mail.GetRequestBody(m)
 	_, err := sendgrid.API(request)

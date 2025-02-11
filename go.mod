@@ -9,7 +9,6 @@ require (
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/labstack/gommon v0.4.2
 	github.com/rs/xid v1.6.0
-	github.com/sabhiram/go-wol v0.0.0-20211224004021-c83b0c2f887d
 	github.com/sdomino/scribble v0.0.0-20230717151034-b95d4df19aa8
 	github.com/sendgrid/sendgrid-go v3.16.0+incompatible
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
