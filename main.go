@@ -46,10 +46,9 @@ var (
 	flagSendgridApiKey string
 	flagEmailFrom      string
 	flagEmailFromName  = "WireGuard Manager"
-	// IMPORTANT: If no SESSION_SECRET is provided via environment or file,
-	// a random secret is generated which will change on every restart.
-	// For production, be sure to supply a fixed value.
-	flagSessionSecret      = util.RandomString(32)
+	// IMPORTANT: Instead of generating a new random secret on each run,
+	// we now persist the secret in our JSON DB if no SESSION_SECRET is provided.
+	flagSessionSecret      = util.GetPersistedSessionSecret()
 	flagSessionMaxDuration = 90
 	flagWgConfTemplate     string
 	flagBasePath           string
@@ -108,6 +107,7 @@ func init() {
 		flag.StringVar(&flagSendgridApiKey, "sendgrid-api-key", util.LookupEnvOrFile("SENDGRID_API_KEY_FILE", flagSendgridApiKey), "File containing your sendgrid api key.")
 	}
 
+	// Use the persisted session secret as default.
 	if sessionSecretLookup != "" {
 		flag.StringVar(&flagSessionSecret, "session-secret", sessionSecretLookup, "The key used to encrypt session cookies.")
 	} else {
@@ -131,7 +131,7 @@ func init() {
 	util.SendgridApiKey = flagSendgridApiKey
 	util.EmailFrom = flagEmailFrom
 	util.EmailFromName = flagEmailFromName
-	// Use a stable session secret if provided; otherwise a new random value is generated each run.
+	// Use a stable session secret.
 	util.SessionSecret = sha512.Sum512([]byte(flagSessionSecret))
 	// DEBUG: Log the session secret hash for verification (remove in production)
 	log.Debugf("Using session secret (SHA512 hash): %x", util.SessionSecret)

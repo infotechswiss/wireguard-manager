@@ -2,65 +2,41 @@
 
 # wireguard-manager
 
-A user-friendly web interface to manage [WireGuard](https://www.wireguard.com).
+WireGuard Manager is an open-source web application written in Go that simplifies the management of a WireGuard VPN server. It provides a user-friendly web interface for administering server settings, managing VPN client configurations, and handling user accounts. Additionally, the project supports email notifications (via SMTP or SendGrid), secure session management, and configuration change detection.
 
 ## Features
 
-- Simple and intuitive UI
-- Authentication
-- Manage client information (name, email, etc.)
-- Retrieve client config via QR code, file download, or email
+- Manage WireGuard server settings, VPN client configurations, and user accounts through an intuitive web interface.
+- Create, update, and delete VPN clients. Automatically generate client configurations and QR codes.
+- Send client configuration files via email using either SMTP or SendGrid.
+- Secure Session Management: Sessions are managed using Gorilla Sessions with a persisted session secret stored in the JSON DB, ensuring that session cookies remain valid across restarts.
+- Configuration Change Detection: Polls for configuration changes and prompts the admin to apply new configurations via an “Apply Config” button.
+- A dark mode user interface with responsive design for an improved user experience.
 
-![wireguard-manager 0.3.7](https://user-images.githubusercontent.com/37958026/177041280-e3e7ca16-d4cf-4e95-9920-68af15e780dd.png)
 
-> **Note:** The default login username/password is `admin/wmanager`. Please change it in your environment for production.
+![Screenshot of the WireGuard Manager UI](screenshots/WireGuardManager.jpg)
+
+> **Note:** The default login username/password is `admin/swissmakers`. Please change it in your environment for production.
 
 ---
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-   - [Using the Binary](#using-the-binary)
-   - [Using Docker Compose](#using-docker-compose)
-2. [Installation Example on CentOS/RHEL 9 (Manual Setup)](#installation-example-on-centosrhel-9-manual-setup)
+1. [Installation Example on CentOS/RHEL 9 (Manual Setup)](#installation-example-on-centosrhel-9-manual-setup)
    - [Prerequisites](#prerequisites)
    - [Steps](#steps)
-3. [Environment Variables](#environment-variables)
+2. [Environment Variables](#environment-variables)
    - [Defaults for Server Configuration](#defaults-for-server-configuration)
    - [Defaults for New Clients](#defaults-for-new-clients)
    - [Docker-Only Variables](#docker-only-variables)
-4. [Auto-Restarting WireGuard](#auto-restarting-wireguard)
+3. [Auto-Restarting WireGuard](#auto-restarting-wireguard)
    - [Using systemd](#using-systemd)
    - [Using OpenRC](#using-openrc)
    - [Using Docker](#using-docker)
-5. [Build From Source](#build-from-source)
+4. [Build From Source](#build-from-source)
    - [Build Docker Image](#build-docker-image)
    - [Build Binary File](#build-binary-file)
-6. [License](#license)
-
----
-
-## Quick Start
-
-### Using the Binary
-
-1. **Download** the latest release from the [GitHub Releases](https://github.com/swissmakers/wireguard-manager/releases).
-2. **Make it executable** and run it:
-   ```bash
-   chmod +x wireguard-manager
-   ./wireguard-manager
-   ```
-3. **Access the web interface** in your browser. By default, it listens on `:80` (or as defined by `BIND_ADDRESS`).
-
-### Using Docker Compose
-
-1. Check out the [examples/docker-compose](examples/docker-compose) folder for sample Compose files.
-2. **Adjust** the environment variables and ports in your chosen `docker-compose.yml` as needed.
-3. **Start** the containers:
-   ```bash
-   docker-compose up -d
-   ```
-4. **Access** the web interface in your browser at `http://<your-docker-host>:<port>`.
+5. [License](#license)
 
 ---
 
@@ -98,20 +74,20 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
        npm
    ```
 
-4. **(Optional) Install specific Golang RPMs**:  
-   If your environment needs a newer version of Go than provided by default, you can grab the RPMs (example shown below). Adjust version links as necessary:
+4. **Clone `wireguard-manager` repository**:
    ```bash
-   mkdir -p ~/dev/go-rpms && cd ~/dev/go-rpms
+   git clone https://github.com/swissmakers/wireguard-manager.git /opt/wireguard-manager
+   ```
+
+5. **(Optional) Install specific Golang RPMs**:  
+   If your environment needs a newer version of Go than provided by default, you can grab the RPMs (example shown below) or use the already downloaded ones inside "./dev/go-rpm" folder inside this project.
+   ```bash
+   mkdir -p ./dev/go-rpms && cd ./dev/go-rpms
    wget https://rpmfind.net/linux/centos-stream/9-stream/AppStream/x86_64/os/Packages/golang-race-1.23.2-1.el9.x86_64.rpm
    wget https://rpmfind.net/linux/centos-stream/9-stream/AppStream/x86_64/os/Packages/golang-bin-1.23.2-1.el9.x86_64.rpm
    wget https://rpmfind.net/linux/centos-stream/9-stream/AppStream/x86_64/os/Packages/golang-src-1.23.2-1.el9.noarch.rpm
    wget https://rpmfind.net/linux/centos-stream/9-stream/AppStream/x86_64/os/Packages/golang-1.23.2-1.el9.x86_64.rpm
    dnf install -y ./*.rpm
-   ```
-
-5. **Clone `wireguard-manager` repository**:
-   ```bash
-   git clone https://github.com/swissmakers/wireguard-manager.git /opt/wireguard-manager
    ```
 
 6. **Create a dedicated WireGuard user and config**:
@@ -141,11 +117,11 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
    WGM_USERNAME="admin"
    WGM_PASSWORD="**********************************"
    WGM_ENDPOINT_ADDRESS="vpn.example.com"
-   WGM_DNS="1.1.1.1"
+   WGM_DNS="8.8.8.8"
    WGM_MTU="1450"
    WGM_PERSISTENT_KEEPALIVE="15"
    WGM_CONFIG_FILE_PATH="/etc/wireguard/wg0.conf"
-   WGM_LOG_LEVEL="DEBUG"
+   # WGM_LOG_LEVEL="DEBUG"
    # WG_CONF_TEMPLATE=
    EMAIL_FROM_ADDRESS=noreply@example.com
    EMAIL_FROM_NAME=noreply
@@ -327,6 +303,7 @@ wireguard-manager generates and updates the `wg0.conf` (or your chosen interface
 
 - **Enable and start** the path + service:
   ```bash
+  systemctl daemon-reload
   systemctl enable wgm.{path,service}
   systemctl start wgm.{path,service}
   ```

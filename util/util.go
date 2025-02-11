@@ -735,3 +735,41 @@ func filterEmpty(strs []string) []string {
 	}
 	return out
 }
+
+// GetPersistedSessionSecret retrieves a stable session secret from the JSON DB.
+// It first checks if the SESSION_SECRET environment variable is set. If not,
+// it attempts to read the secret from the "config" collection (key "session_secret")
+// in the JSON DB (located in "./db"). If no secret is stored, it generates a new one,
+// saves it to the JSON DB, and returns it.
+func GetPersistedSessionSecret() string {
+	// First, check if the environment variable is set.
+	if secret := LookupEnvOrString("SESSION_SECRET", ""); secret != "" {
+		// Trim any accidental whitespace.
+		return strings.TrimSpace(secret)
+	}
+
+	// Open the Scribble DB at "./db".
+	db, err := scribble.New("./db", nil)
+	if err != nil {
+		log.Errorf("Error opening json db for session secret: %v", err)
+		// Fallback: generate a random secret.
+		return RandomString(32)
+	}
+
+	// Attempt to read the session secret from the "config" collection with key "session_secret".
+	var storedSecret string
+	err = db.Read("config", "session_secret", &storedSecret)
+	if err == nil && strings.TrimSpace(storedSecret) != "" {
+		return strings.TrimSpace(storedSecret)
+	}
+
+	// No valid secret was found, so generate a new one.
+	newSecret := RandomString(32)
+	// Save the new secret in the JSON DB.
+	err = db.Write("config", "session_secret", newSecret)
+	if err != nil {
+		log.Errorf("Error saving session secret to json db: %v", err)
+		// Even if saving fails, return the generated secret.
+	}
+	return newSecret
+}
