@@ -79,7 +79,7 @@
         /* Modify inputs and form elements */
         input, select, textarea, .form-control, .form-control:disabled, div.tagsinput {
             background-color: #333333;
-            color: #e0e0e0;
+            color: #e0e0e0 !important;
             border: 1px solid #555;
         }
         input::placeholder, select::placeholder, textarea::placeholder {
@@ -87,6 +87,18 @@
         }
         input[type="checkbox"], input[type="radio"] {
             background-color: #444;
+        }
+        .form-control:focus {
+            background-color: #555555;
+            border-color: #80bdff;
+        }
+        div.tagsinput span.tag {
+            border: 1px solid #22923c;
+            background: #181b16;
+            color: #35d85b;
+        }
+        div.tagsinput span.tag a {
+            color: #35d85b;
         }
         /* Modal dark mode */
         .modal-content {
