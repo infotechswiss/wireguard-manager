@@ -34,14 +34,14 @@ var (
 // Default values and environment variable names.
 const (
 	DefaultUsername                        = "admin"
-	DefaultPassword                        = "admin"
+	DefaultPassword                        = "swissmakers"
 	DefaultIsAdmin                         = true
-	DefaultServerAddress                   = "10.252.1.0/24"
-	DefaultServerPort                      = 51820
-	DefaultDNS                             = "1.1.1.1"
+	DefaultServerAddress                   = "10.8.0.0/24"
+	DefaultServerPort                      = 8443
+	DefaultDNS                             = "8.8.8.8"
 	DefaultMTU                             = 1450
 	DefaultPersistentKeepalive             = 15
-	DefaultFirewallMark                    = "0xca6c" // e.g. 51820
+	DefaultFirewallMark                    = "0xca6c" // e.g. 8443
 	DefaultTable                           = "auto"
 	DefaultConfigFilePath                  = "/etc/wireguard/wg0.conf"
 	UsernameEnvVar                         = "WGM_USERNAME"
