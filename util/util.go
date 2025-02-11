@@ -21,18 +21,22 @@ import (
 	"time"
 
 	"github.com/chmike/domain"
+	"github.com/swissmakers/wireguard-manager/model"
 	"github.com/swissmakers/wireguard-manager/store"
 	"golang.org/x/mod/sumdb/dirhash"
 
 	externalip "github.com/glendc/go-external-ip"
 	"github.com/labstack/gommon/log"
 	"github.com/sdomino/scribble"
-	"github.com/swissmakers/wireguard-manager/model"
 )
 
-// BuildClientConfig to create wireguard client config string
+//
+// Client Configuration Building
+//
+
+// BuildClientConfig creates the WireGuard client configuration as a string.
 func BuildClientConfig(client model.Client, server model.Server, setting model.GlobalSetting) string {
-	// Interface section
+	// [Interface] section
 	clientAddress := fmt.Sprintf("Address = %s\n", strings.Join(client.AllocatedIPs, ","))
 	clientPrivateKey := fmt.Sprintf("PrivateKey = %s\n", client.PrivateKey)
 	clientDNS := ""
@@ -44,13 +48,12 @@ func BuildClientConfig(client model.Client, server model.Server, setting model.G
 		clientMTU = fmt.Sprintf("MTU = %d\n", setting.MTU)
 	}
 
-	// Peer section
+	// [Peer] section
 	peerPublicKey := fmt.Sprintf("PublicKey = %s\n", server.KeyPair.PublicKey)
 	peerPresharedKey := ""
 	if client.PresharedKey != "" {
 		peerPresharedKey = fmt.Sprintf("PresharedKey = %s\n", client.PresharedKey)
 	}
-
 	peerAllowedIPs := fmt.Sprintf("AllowedIPs = %s\n", strings.Join(client.AllowedIPs, ","))
 
 	desiredHost := setting.EndpointAddress
@@ -65,13 +68,11 @@ func BuildClientConfig(client model.Client, server model.Server, setting model.G
 		}
 	}
 	peerEndpoint := fmt.Sprintf("Endpoint = %s:%d\n", desiredHost, desiredPort)
-
 	peerPersistentKeepalive := ""
 	if setting.PersistentKeepalive > 0 {
 		peerPersistentKeepalive = fmt.Sprintf("PersistentKeepalive = %d\n", setting.PersistentKeepalive)
 	}
 
-	// build the config as string
 	strConfig := "[Interface]\n" +
 		clientAddress +
 		clientPrivateKey +
@@ -87,88 +88,82 @@ func BuildClientConfig(client model.Client, server model.Server, setting model.G
 	return strConfig
 }
 
-// ClientDefaultsFromEnv to read the default values for creating a new client from the environment or use sane defaults
+// ClientDefaultsFromEnv returns default client creation values from environment variables or sane defaults.
 func ClientDefaultsFromEnv() model.ClientDefaults {
-	clientDefaults := model.ClientDefaults{}
-	clientDefaults.AllowedIps = LookupEnvOrStrings(DefaultClientAllowedIpsEnvVar, []string{"0.0.0.0/0"})
-	clientDefaults.ExtraAllowedIps = LookupEnvOrStrings(DefaultClientExtraAllowedIpsEnvVar, []string{})
-	clientDefaults.UseServerDNS = LookupEnvOrBool(DefaultClientUseServerDNSEnvVar, true)
-	clientDefaults.EnableAfterCreation = LookupEnvOrBool(DefaultClientEnableAfterCreationEnvVar, true)
-
-	return clientDefaults
+	return model.ClientDefaults{
+		AllowedIPs:          LookupEnvOrStrings(DefaultClientAllowedIpsEnvVar, []string{"0.0.0.0/0"}),
+		ExtraAllowedIPs:     LookupEnvOrStrings(DefaultClientExtraAllowedIpsEnvVar, []string{}),
+		UseServerDNS:        LookupEnvOrBool(DefaultClientUseServerDNSEnvVar, true),
+		EnableAfterCreation: LookupEnvOrBool(DefaultClientEnableAfterCreationEnvVar, true),
+	}
 }
 
-// ContainsCIDR to check if ipnet1 contains ipnet2
-// https://stackoverflow.com/a/40406619/6111641
-// https://go.dev/play/p/Q4J-JEN3sF
+//
+// CIDR and IP Validation
+//
+
+// ContainsCIDR returns true if ipnet1 completely contains ipnet2.
 func ContainsCIDR(ipnet1, ipnet2 *net.IPNet) bool {
 	ones1, _ := ipnet1.Mask.Size()
 	ones2, _ := ipnet2.Mask.Size()
 	return ones1 <= ones2 && ipnet1.Contains(ipnet2.IP)
 }
 
-// ValidateCIDR to validate a network CIDR
+// ValidateCIDR returns true if the given CIDR is valid.
 func ValidateCIDR(cidr string) bool {
 	_, _, err := net.ParseCIDR(cidr)
 	return err == nil
 }
 
-// ValidateCIDRList to validate a list of network CIDR
+// ValidateCIDRList validates a slice of CIDRs.
+// If allowEmpty is true, empty strings are allowed.
 func ValidateCIDRList(cidrs []string, allowEmpty bool) bool {
 	for _, cidr := range cidrs {
-		if allowEmpty {
-			if len(cidr) > 0 {
-				if !ValidateCIDR(cidr) {
-					return false
-				}
-			}
-		} else {
-			if !ValidateCIDR(cidr) {
-				return false
-			}
+		if allowEmpty && len(cidr) == 0 {
+			continue
+		}
+		if !ValidateCIDR(cidr) {
+			return false
 		}
 	}
 	return true
 }
 
-// ValidateAllowedIPs to validate allowed ip addresses in CIDR format
+// ValidateAllowedIPs validates a list of allowed IP addresses in CIDR format.
 func ValidateAllowedIPs(cidrs []string) bool {
 	return ValidateCIDRList(cidrs, false)
 }
 
-// ValidateExtraAllowedIPs to validate extra Allowed ip addresses, allowing empty strings
+// ValidateExtraAllowedIPs validates extra allowed IPs, allowing empty strings.
 func ValidateExtraAllowedIPs(cidrs []string) bool {
 	return ValidateCIDRList(cidrs, true)
 }
 
-// ValidateServerAddresses to validate allowed ip addresses in CIDR format
+// ValidateServerAddresses validates server interface addresses in CIDR format.
 func ValidateServerAddresses(cidrs []string) bool {
 	return ValidateCIDRList(cidrs, false)
 }
 
-// ValidateIPAddress to validate the IPv4 and IPv6 address
+// ValidateIPAddress checks whether a given string is a valid IPv4 or IPv6 address.
 func ValidateIPAddress(ip string) bool {
 	return net.ParseIP(ip) != nil
 }
 
-// ValidateDomainName to validate domain name
+// ValidateDomainName checks whether a domain name is valid.
 func ValidateDomainName(name string) bool {
 	return domain.Check(name) == nil
 }
 
-// ValidateIPAndSearchDomainAddressList to validate a list of IPv4 and IPv6 addresses plus added search domains
+// ValidateIPAndSearchDomainAddressList validates a list of IP addresses followed by search domains.
 func ValidateIPAndSearchDomainAddressList(entries []string) bool {
-	ip := false
-	domain := false
+	var ipFound, domainFound bool
 	for _, entry := range entries {
-		// ip but not after domain
-		if ValidateIPAddress(entry) && !domain {
-			ip = true
+		if ValidateIPAddress(entry) && !domainFound {
+			ipFound = true
 			continue
 		}
-		// domain and after ip
-		if ValidateDomainName(entry) && ip {
-			domain = true
+		if ValidateDomainName(entry) && ipFound {
+			domainFound = true
 			continue
 		}
 		return false
@@ -176,19 +171,20 @@ func ValidateIPAndSearchDomainAddressList(entries []string) bool {
 	return true
 }
 
-// GetInterfaceIPs to get local machine's interface ip addresses
+//
+// Local and Public IP Retrieval
+//
+
+// GetInterfaceIPs returns the list of local interface IP addresses (IPv4 only).
 func GetInterfaceIPs() ([]model.Interface, error) {
-	// get machine's interfaces
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
 
 	var interfaceList []model.Interface
-
-	// get interface's ip addresses
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
 		if err != nil {
 			return nil, err
 		}
@@ -207,43 +203,38 @@ func GetInterfaceIPs() ([]model.Interface, error) {
 			if ip == nil {
 				continue
 			}
-
-			iface := model.Interface{}
-			iface.Name = i.Name
-			iface.IPAddress = ip.String()
-			interfaceList = append(interfaceList, iface)
+			interfaceList = append(interfaceList, model.Interface{
+				Name:      iface.Name,
+				IPAddress: ip.String(),
+			})
 		}
 	}
-	return interfaceList, err
+	return interfaceList, nil
 }
 
-// GetPublicIP to get machine's public ip address
+// GetPublicIP returns the public IP address of the machine using an external consensus.
 func GetPublicIP() (model.Interface, error) {
-	// set time out to 5 seconds
-	cfg := externalip.ConsensusConfig{}
-	cfg.Timeout = time.Second * 5
+	cfg := externalip.ConsensusConfig{Timeout: 5 * time.Second}
 	consensus := externalip.NewConsensus(&cfg, nil)
-
-	// add trusted voters
 	consensus.AddVoter(externalip.NewHTTPSource("https://checkip.amazonaws.com/"), 1)
 	consensus.AddVoter(externalip.NewHTTPSource("http://whatismyip.akamai.com"), 1)
 	consensus.AddVoter(externalip.NewHTTPSource("https://ifconfig.top"), 1)
 
-	publicInterface := model.Interface{}
-	publicInterface.Name = "Public Address"
-
+	publicInterface := model.Interface{Name: "Public Address"}
 	ip, err := consensus.ExternalIP()
 	if err != nil {
 		publicInterface.IPAddress = "N/A"
 	} else {
 		publicInterface.IPAddress = ip.String()
 	}
-
-	// error handling happened above, no need to pass it through
 	return publicInterface, nil
 }
 
-// GetIPFromCIDR get ip from CIDR
+//
+// IP Extraction and Allocation
+//
+
+// GetIPFromCIDR extracts the IP portion from a CIDR notation.
 func GetIPFromCIDR(cidr string) (string, error) {
 	ip, _, err := net.ParseCIDR(cidr)
 	if err != nil {
@@ -252,24 +243,22 @@ func GetIPFromCIDR(cidr string) (string, error) {
 	return ip.String(), nil
 }
 
-// GetAllocatedIPs to get all ip addresses allocated to clients and server
+// GetAllocatedIPs returns all IP addresses allocated to clients and the server.
+// The ignoreClientID parameter can be used to exclude a specific client.
 func GetAllocatedIPs(ignoreClientID string) ([]string, error) {
-	allocatedIPs := make([]string, 0)
+	var allocatedIPs []string
 
-	// initialize database directory
-	dir := "./db"
-	db, err := scribble.New(dir, nil)
+	// Initialize the scribble DB.
+	db, err := scribble.New("./db", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// read server information
-	serverInterface := model.ServerInterface{}
+	// Read server interface addresses.
+	var serverInterface model.ServerInterface
 	if err := db.Read("server", "interfaces", &serverInterface); err != nil {
 		return nil, err
 	}
-
-	// append server's addresses to the result
 	for _, cidr := range serverInterface.Addresses {
 		ip, err := GetIPFromCIDR(cidr)
 		if err != nil {
@@ -278,19 +267,16 @@ func GetAllocatedIPs(ignoreClientID string) ([]string, error) {
 		allocatedIPs = append(allocatedIPs, ip)
 	}
 
-	// read client information
+	// Read clients.
 	records, err := db.ReadAll("clients")
 	if err != nil {
 		return nil, err
 	}
-
-	// append client's addresses to the result
-	for _, f := range records {
-		client := model.Client{}
-		if err := json.Unmarshal(f, &client); err != nil {
+	for _, record := range records {
+		var client model.Client
+		if err := json.Unmarshal(record, &client); err != nil {
 			return nil, err
 		}
-
 		if client.ID != ignoreClientID {
 			for _, cidr := range client.AllocatedIPs {
 				ip, err := GetIPFromCIDR(cidr)
@@ -305,7 +291,7 @@ func GetAllocatedIPs(ignoreClientID string) ([]string, error) {
 	return allocatedIPs, nil
 }
 
-// inc from https://play.golang.org/p/m8TNTtygK0
+// inc increments an IP address by one.
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
 		ip[j]++
@@ -315,21 +301,17 @@ func inc(ip net.IP) {
 	}
 }
 
-// GetBroadcastIP func to get the broadcast ip address of a network
+// GetBroadcastIP computes the broadcast address of a given network.
 func GetBroadcastIP(n *net.IPNet) net.IP {
-	var broadcast net.IP
-	if len(n.IP) == 4 {
-		broadcast = net.ParseIP("0.0.0.0").To4()
-	} else {
-		broadcast = net.ParseIP("::")
-	}
-	for i := 0; i < len(n.IP); i++ {
+	broadcast := make(net.IP, len(n.IP))
+	for i := range n.IP {
 		broadcast[i] = n.IP[i] | ^n.Mask[i]
 	}
 	return broadcast
 }
 
-// GetBroadcastAndNetworkAddrsLookup get the ip address that can't be used with current server interfaces
+// GetBroadcastAndNetworkAddrsLookup returns a map of addresses (broadcast and network addresses)
+// for the given interface addresses (CIDRs).
 func GetBroadcastAndNetworkAddrsLookup(interfaceAddresses []string) map[string]bool {
 	list := make(map[string]bool)
 	for _, ifa := range interfaceAddresses {
@@ -337,30 +319,24 @@ func GetBroadcastAndNetworkAddrsLookup(interfaceAddresses []string) map[string]b
 		if err != nil {
 			continue
 		}
-
-		broadcastAddr := GetBroadcastIP(netAddr).String()
-		networkAddr := netAddr.IP.String()
-		list[broadcastAddr] = true
-		list[networkAddr] = true
+		list[GetBroadcastIP(netAddr).String()] = true
+		list[netAddr.IP.String()] = true
 	}
 	return list
 }
 
-// GetAvailableIP get the ip address that can be allocated from an CIDR
-// We need interfaceAddresses to find real broadcast and network addresses
+// GetAvailableIP returns an available IP from the given CIDR that is not allocated and is not a network/broadcast address.
 func GetAvailableIP(cidr string, allocatedList, interfaceAddresses []string) (string, error) {
 	ip, netAddr, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return "", err
 	}
-
 	unavailableIPs := GetBroadcastAndNetworkAddrsLookup(interfaceAddresses)
-
 	for ip := ip.Mask(netAddr.Mask); netAddr.Contains(ip); inc(ip) {
-		available := true
 		suggestedAddr := ip.String()
-		for _, allocatedAddr := range allocatedList {
-			if suggestedAddr == allocatedAddr {
+		available := true
+		for _, allocated := range allocatedList {
+			if suggestedAddr == allocated {
 				available = false
 				break
 			}
@@ -369,31 +345,22 @@ func GetAvailableIP(cidr string, allocatedList, interfaceAddresses []string) (st
 			return suggestedAddr, nil
 		}
 	}
-
 	return "", errors.New("no more available ip address")
 }
 
-// ValidateIPAllocation to validate the list of client's ip allocation
-// They must have a correct format and available in serverAddresses space
+// ValidateIPAllocation validates the client's requested IP allocation.
 func ValidateIPAllocation(serverAddresses []string, ipAllocatedList []string, ipAllocationList []string) (bool, error) {
 	for _, clientCIDR := range ipAllocationList {
 		ip, _, _ := net.ParseCIDR(clientCIDR)
-
-		// clientCIDR must be in CIDR format
 		if ip == nil {
 			return false, fmt.Errorf("invalid ip allocation input %s. Must be in CIDR format", clientCIDR)
 		}
-
-		// return false immediately if the ip is already in use (in ipAllocatedList)
-		for _, item := range ipAllocatedList {
-			if item == ip.String() {
+		for _, allocated := range ipAllocatedList {
+			if allocated == ip.String() {
 				return false, fmt.Errorf("IP %s already allocated", ip)
 			}
 		}
-
-		// even if it is not in use, we still need to check if it
-		// belongs to a network of the server.
-		var isValid = false
+		var isValid bool
 		for _, serverCIDR := range serverAddresses {
 			_, serverNet, _ := net.ParseCIDR(serverCIDR)
 			if serverNet.Contains(ip) {
@@ -401,49 +368,62 @@ func ValidateIPAllocation(serverAddresses []string, ipAllocatedList []string, ip
 				break
 			}
 		}
-
-		// current ip allocation is valid, check the next one
-		if isValid {
-			continue
-		} else {
+		if !isValid {
 			return false, fmt.Errorf("IP %s does not belong to any network addresses of WireGuard server", ip)
 		}
 	}
-
 	return true, nil
 }
 
-// findSubnetRangeForIP to find first SR for IP, and cache the match
+//
+// Subnet Ranges and Client Data Helpers
+//
+
+// findSubnetRangeForIP finds the subnet range for a given CIDR.
+// It uses a cache (IPToSubnetRange) and the global SubnetRanges and SubnetRangesOrder.
 func findSubnetRangeForIP(cidr string) (uint16, error) {
+	// Parse the provided CIDR.
 	ip, _, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return 0, err
 	}
+	ipStr := ip.String()
 
-	if srName, ok := IPToSubnetRange[ip.String()]; ok {
-		return srName, nil
+	// Check the cache first using a read lock.
+	ipToSubnetRangeMutex.RLock()
+	if sr, ok := IPToSubnetRange[ipStr]; ok {
+		ipToSubnetRangeMutex.RUnlock()
+		return sr, nil
 	}
+	ipToSubnetRangeMutex.RUnlock()
 
-	for srIndex, sr := range SubnetRangesOrder {
-		for _, srCIDR := range SubnetRanges[sr] {
-			if srCIDR.Contains(ip) {
-				IPToSubnetRange[ip.String()] = uint16(srIndex)
-				return uint16(srIndex), nil
+	// Iterate over the global SubnetRangesOrder to compute the subnet range index.
+	for index, srName := range SubnetRangesOrder {
+		cidrList, ok := SubnetRanges[srName]
+		if !ok {
+			continue
+		}
+		// For each CIDR in the current subnet range, check if it contains the IP.
+		for _, ipnet := range cidrList {
+			if ipnet.Contains(ip) {
+				// Lock for writing and store the computed index in the cache.
+				ipToSubnetRangeMutex.Lock()
+				IPToSubnetRange[ipStr] = uint16(index)
+				ipToSubnetRangeMutex.Unlock()
+				return uint16(index), nil
 			}
 		}
 	}
-	return 0, fmt.Errorf("subnet range not found for this IP")
+	return 0, fmt.Errorf("subnet range not found for IP %s", ipStr)
 }
 
-// FillClientSubnetRange to fill subnet ranges client belongs to, does nothing if SRs are not found
+// FillClientSubnetRange appends the subnet range names to the client data.
 func FillClientSubnetRange(client model.ClientData) model.ClientData {
 	cl := *client.Client
 	for _, ip := range cl.AllocatedIPs {
-		sr, err := findSubnetRangeForIP(ip)
-		if err != nil {
-			continue
+		if sr, err := findSubnetRangeForIP(ip); err == nil {
+			cl.SubnetRanges = append(cl.SubnetRanges, SubnetRangesOrder[sr])
 		}
-		cl.SubnetRanges = append(cl.SubnetRanges, SubnetRangesOrder[sr])
 	}
 	return model.ClientData{
 		Client: &cl,
@@ -451,13 +431,11 @@ func FillClientSubnetRange(client model.ClientData) model.ClientData {
 	}
 }
 
-// ValidateAndFixSubnetRanges to check if subnet ranges are valid for the server configuration
-// Removes all non-valid CIDRs
+// ValidateAndFixSubnetRanges checks and removes non-valid CIDRs from the global SubnetRanges.
 func ValidateAndFixSubnetRanges(db store.IStore) error {
 	if len(SubnetRangesOrder) == 0 {
 		return nil
 	}
-
 	server, err := db.GetServer()
 	if err != nil {
 		return err
@@ -471,28 +449,24 @@ func ValidateAndFixSubnetRanges(db store.IStore) error {
 		}
 		serverSubnets = append(serverSubnets, netAddr)
 	}
-
 	for _, rng := range SubnetRangesOrder {
 		cidrs := SubnetRanges[rng]
 		if len(cidrs) > 0 {
 			newCIDRs := make([]*net.IPNet, 0)
 			for _, cidr := range cidrs {
 				valid := false
-
 				for _, serverSubnet := range serverSubnets {
 					if ContainsCIDR(serverSubnet, cidr) {
 						valid = true
 						break
 					}
 				}
-
 				if valid {
 					newCIDRs = append(newCIDRs, cidr)
 				} else {
 					log.Warnf("[%v] CIDR is outside of all server subnets: %v. Removed.", rng, cidr)
 				}
 			}
-
 			if len(newCIDRs) > 0 {
 				SubnetRanges[rng] = newCIDRs
 			} else {
@@ -501,94 +475,82 @@ func ValidateAndFixSubnetRanges(db store.IStore) error {
 			}
 		}
 	}
-
 	return nil
 }
 
-// GetSubnetRangesString to get a formatted string, representing active subnet ranges
+// GetSubnetRangesString returns a formatted string representing active subnet ranges.
 func GetSubnetRangesString() string {
 	if len(SubnetRangesOrder) == 0 {
 		return ""
 	}
-
-	strB := strings.Builder{}
-
+	var sb strings.Builder
 	for _, rng := range SubnetRangesOrder {
 		cidrs := SubnetRanges[rng]
 		if len(cidrs) > 0 {
-			strB.WriteString(rng)
-			strB.WriteString(":[")
-			first := true
-			for _, cidr := range cidrs {
-				if !first {
-					strB.WriteString(", ")
+			sb.WriteString(rng)
+			sb.WriteString(":[")
+			for i, cidr := range cidrs {
+				if i > 0 {
+					sb.WriteString(", ")
 				}
-				strB.WriteString(cidr.String())
-				first = false
+				sb.WriteString(cidr.String())
 			}
-			strB.WriteString("]  ")
+			sb.WriteString("]  ")
 		}
 	}
-
-	return strings.TrimSpace(strB.String())
+	return strings.TrimSpace(sb.String())
 }
 
-// WriteWireGuardServerConfig to write WireGuard server config. e.g. wg0.conf
+//
+// WireGuard Server Configuration File
+//
+
+// WriteWireGuardServerConfig writes the WireGuard server configuration (wg.conf) using a template.
+// If WgConfTemplate is set, it is used; otherwise, a default embedded template is read.
 func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, clientDataList []model.ClientData, usersList []model.User, globalSettings model.GlobalSetting) error {
 	var tmplWireGuardConf string
-
-	// if set, read wg.conf template from WgConfTemplate
 	if len(WgConfTemplate) > 0 {
-		fileContentBytes, err := os.ReadFile(WgConfTemplate)
+		data, err := os.ReadFile(WgConfTemplate)
 		if err != nil {
 			return err
 		}
-		tmplWireGuardConf = string(fileContentBytes)
+		tmplWireGuardConf = string(data)
 	} else {
-		// read default wg.conf template file to string
 		fileContent, err := StringFromEmbedFile(tmplDir, "wg.conf")
 		if err != nil {
 			return err
 		}
 		tmplWireGuardConf = fileContent
 	}
-
-	// escape multiline notes
-	escapedClientDataList := []model.ClientData{}
+	// Escape multiline notes.
+	var escapedClientDataList []model.ClientData
 	for _, cd := range clientDataList {
 		if cd.Client.AdditionalNotes != "" {
 			cd.Client.AdditionalNotes = strings.ReplaceAll(cd.Client.AdditionalNotes, "\n", "\n# ")
 		}
 		escapedClientDataList = append(escapedClientDataList, cd)
 	}
-
-	// parse the template
-	t, err := template.New("wg_config").Parse(tmplWireGuardConf)
+	tmplParsed, err := template.New("wg_config").Parse(tmplWireGuardConf)
 	if err != nil {
 		return err
 	}
-
-	// write config file to disk
 	f, err := os.Create(globalSettings.ConfigFilePath)
 	if err != nil {
 		return err
 	}
-
+	defer f.Close()
 	config := map[string]interface{}{
 		"serverConfig":   serverConfig,
 		"clientDataList": escapedClientDataList,
 		"globalSettings": globalSettings,
 		"usersList":      usersList,
 	}
-
-	err = t.Execute(f, config)
-	if err != nil {
-		return err
-	}
-	f.Close()
-
-	return nil
+	return tmplParsed.Execute(f, config)
 }
+
+//
+// Environment Variable Helpers
+//
 
 func LookupEnvOrString(key string, defaultVal string) string {
 	if val, ok := os.LookupEnv(key); ok {
@@ -599,22 +561,22 @@ func LookupEnvOrString(key string, defaultVal string) string {
 
 func LookupEnvOrBool(key string, defaultVal bool) bool {
 	if val, ok := os.LookupEnv(key); ok {
-		v, err := strconv.ParseBool(val)
-		if err != nil {
+		if parsed, err := strconv.ParseBool(val); err == nil {
+			return parsed
+		} else {
 			fmt.Fprintf(os.Stderr, "LookupEnvOrBool[%s]: %v\n", key, err)
 		}
-		return v
 	}
 	return defaultVal
 }
 
 func LookupEnvOrInt(key string, defaultVal int) int {
 	if val, ok := os.LookupEnv(key); ok {
-		v, err := strconv.Atoi(val)
-		if err != nil {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			return parsed
+		} else {
 			fmt.Fprintf(os.Stderr, "LookupEnvOrInt[%s]: %v\n", key, err)
 		}
-		return v
 	}
 	return defaultVal
 }
@@ -626,32 +588,39 @@ func LookupEnvOrStrings(key string, defaultVal []string) []string {
 	return defaultVal
 }
 
+// LookupEnvOrFile reads the content of a file whose path is stored in the environment variable.
 func LookupEnvOrFile(key string, defaultVal string) string {
 	if val, ok := os.LookupEnv(key); ok {
-		if file, err := os.Open(val); err == nil {
-			var content string
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				content += scanner.Text()
-			}
-			return content
+		f, err := os.Open(val)
+		if err != nil {
+			return defaultVal
 		}
+		defer f.Close()
+		var content strings.Builder
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			content.WriteString(scanner.Text())
+		}
+		return content.String()
 	}
 	return defaultVal
 }
 
-func StringFromEmbedFile(embed fs.FS, filename string) (string, error) {
-	file, err := embed.Open(filename)
+// StringFromEmbedFile reads a file from an embedded filesystem and returns its content as a string.
+func StringFromEmbedFile(efs fs.FS, filename string) (string, error) {
+	file, err := efs.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	content, err := io.ReadAll(file)
+	defer file.Close()
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return "", err
 	}
-	return string(content), nil
+	return string(data), nil
 }
 
+// ParseLogLevel converts a log level string to log.Lvl.
 func ParseLogLevel(lvl string) (log.Lvl, error) {
 	switch strings.ToLower(lvl) {
 	case "debug":
@@ -669,44 +638,42 @@ func ParseLogLevel(lvl string) (log.Lvl, error) {
 	}
 }
 
-// GetCurrentHash returns current hashes
+//
+// Hashing and Database Helpers
+//
+
+// GetCurrentHash returns current hashes for clients and server configuration.
 func GetCurrentHash(db store.IStore) (string, string) {
 	hashClients, _ := dirhash.HashDir(path.Join(db.GetPath(), "clients"), "prefix", dirhash.Hash1)
 	files := append([]string(nil), "prefix/global_settings.json", "prefix/interfaces.json", "prefix/keypair.json")
-
 	osOpen := func(name string) (io.ReadCloser, error) {
 		return os.Open(filepath.Join(path.Join(db.GetPath(), "server"), strings.TrimPrefix(name, "prefix")))
 	}
 	hashServer, _ := dirhash.Hash1(files, osOpen)
-
 	return hashClients, hashServer
 }
 
+// HashesChanged returns true if the current hashes differ from those stored in the database.
 func HashesChanged(db store.IStore) bool {
 	old, _ := db.GetHashes()
-	oldClient := old.Client
-	oldServer := old.Server
 	newClient, newServer := GetCurrentHash(db)
-
-	if oldClient != newClient {
-		//fmt.Println("Hash for client differs")
-		return true
-	}
-	if oldServer != newServer {
-		//fmt.Println("Hash for server differs")
-		return true
-	}
-	return false
+	return old.Client != newClient || old.Server != newServer
 }
 
+// UpdateHashes updates the stored hashes in the database.
 func UpdateHashes(db store.IStore) error {
 	var clientServerHashes model.ClientServerHashes
 	clientServerHashes.Client, clientServerHashes.Server = GetCurrentHash(db)
 	return db.SaveHashes(clientServerHashes)
 }
 
+//
+// Miscellaneous Helpers
+//
+
+// RandomString returns a random string of the given length.
 func RandomString(length int) string {
-	var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
 	for i := range b {
@@ -715,11 +682,13 @@ func RandomString(length int) string {
 	return string(b)
 }
 
+// ManagePerms sets file permissions to 0600.
 func ManagePerms(path string) error {
-	err := os.Chmod(path, 0600)
-	return err
+	return os.Chmod(path, 0600)
 }
 
+// GetDBUserCRC32 returns a CRC32 checksum of the given user.
+// This is used for session verification.
 func GetDBUserCRC32(dbuser model.User) uint32 {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
@@ -729,28 +698,24 @@ func GetDBUserCRC32(dbuser model.User) uint32 {
 	return crc32.ChecksumIEEE(buf.Bytes())
 }
 
+// ConcatMultipleSlices concatenates multiple byte slices.
 func ConcatMultipleSlices(slices ...[]byte) []byte {
-	var totalLen int
-
+	totalLen := 0
 	for _, s := range slices {
 		totalLen += len(s)
 	}
-
 	result := make([]byte, totalLen)
-
 	var i int
-
 	for _, s := range slices {
 		i += copy(result[i:], s)
 	}
-
 	return result
 }
 
+// GetCookiePath returns the cookie path based on BasePath.
 func GetCookiePath() string {
-	cookiePath := BasePath
-	if cookiePath == "" {
-		cookiePath = "/"
+	if BasePath == "" {
+		return "/"
 	}
-	return cookiePath
+	return BasePath
 }

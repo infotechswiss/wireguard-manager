@@ -13,39 +13,42 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
-	"github.com/swissmakers/wireguard-manager/store"
-
 	"github.com/swissmakers/wireguard-manager/emailer"
 	"github.com/swissmakers/wireguard-manager/handler"
 	"github.com/swissmakers/wireguard-manager/router"
+	"github.com/swissmakers/wireguard-manager/store"
 	"github.com/swissmakers/wireguard-manager/store/jsondb"
 	"github.com/swissmakers/wireguard-manager/util"
 )
 
 var (
-	// command-line banner information
+	// App version information.
 	appVersion = "stable"
 	gitCommit  = "N/A"
 	gitRef     = "N/A"
 	buildTime  = time.Now().UTC().Format("01-02-2006 15:04:05")
 
-	// configuration variables
-	flagDisableLogin       = false
-	flagProxy              = false
-	flagBindAddress        = "0.0.0.0:5000"
-	flagSmtpHostname       = "127.0.0.1"
-	flagSmtpPort           = 25
-	flagSmtpUsername       string
-	flagSmtpPassword       string
-	flagSmtpAuthType       = "NONE"
-	flagSmtpNoTLSCheck     = false
-	flagSmtpEncryption     = "STARTTLS"
-	flagSmtpHelo           = "localhost"
-	flagSendgridApiKey     string
-	flagEmailFrom          string
-	flagEmailFromName      = "WireGuard Manager"
+	// Configuration variables with defaults.
+	flagDisableLogin   = false
+	flagProxy          = false
+	flagBindAddress    = "0.0.0.0:5000"
+	flagSmtpHostname   = "127.0.0.1"
+	flagSmtpPort       = 25
+	flagSmtpUsername   string
+	flagSmtpPassword   string
+	flagSmtpAuthType   = "NONE"
+	flagSmtpNoTLSCheck = false
+	flagSmtpEncryption = "STARTTLS"
+	flagSmtpHelo       = "localhost"
+	flagSendgridApiKey string
+	flagEmailFrom      string
+	flagEmailFromName  = "WireGuard Manager"
+	// IMPORTANT: If no SESSION_SECRET is provided via environment or file,
+	// a random secret is generated which will change on every restart.
+	// For production, be sure to supply a fixed value.
 	flagSessionSecret      = util.RandomString(32)
 	flagSessionMaxDuration = 90
 	flagWgConfTemplate     string
@@ -57,23 +60,18 @@ const (
 	defaultEmailSubject = "Your wireguard configuration"
 	defaultEmailContent = `Hi,</br>
 <p>In this email you can find your personal configuration for our wireguard server.</p>
-
 <p>Best</p>
 `
 )
 
-// embed the "templates" directory
-//
 //go:embed templates/*
 var embeddedTemplates embed.FS
 
-// embed the "assets" directory
-//
 //go:embed assets/*
 var embeddedAssets embed.FS
 
 func init() {
-	// command-line flags and env variables
+	// Bind command-line flags and environment variables.
 	flag.BoolVar(&flagDisableLogin, "disable-login", util.LookupEnvOrBool("DISABLE_LOGIN", flagDisableLogin), "Disable authentication on the app. This is potentially dangerous.")
 	flag.BoolVar(&flagProxy, "proxy", util.LookupEnvOrBool("PROXY", flagProxy), "Behind a proxy. Use X-FORWARDED-FOR for failed login logging")
 	flag.StringVar(&flagBindAddress, "bind-address", util.LookupEnvOrString("BIND_ADDRESS", flagBindAddress), "Address:Port to which the app will be bound.")
@@ -82,8 +80,8 @@ func init() {
 	flag.StringVar(&flagSmtpHelo, "smtp-helo", util.LookupEnvOrString("SMTP_HELO", flagSmtpHelo), "SMTP HELO Hostname")
 	flag.StringVar(&flagSmtpUsername, "smtp-username", util.LookupEnvOrString("SMTP_USERNAME", flagSmtpUsername), "SMTP Username")
 	flag.BoolVar(&flagSmtpNoTLSCheck, "smtp-no-tls-check", util.LookupEnvOrBool("SMTP_NO_TLS_CHECK", flagSmtpNoTLSCheck), "Disable TLS verification for SMTP. This is potentially dangerous.")
-	flag.StringVar(&flagSmtpEncryption, "smtp-encryption", util.LookupEnvOrString("SMTP_ENCRYPTION", flagSmtpEncryption), "SMTP Encryption : NONE, SSL, SSLTLS, TLS or STARTTLS (by default)")
-	flag.StringVar(&flagSmtpAuthType, "smtp-auth-type", util.LookupEnvOrString("SMTP_AUTH_TYPE", flagSmtpAuthType), "SMTP Auth Type : PLAIN, LOGIN or NONE.")
+	flag.StringVar(&flagSmtpEncryption, "smtp-encryption", util.LookupEnvOrString("SMTP_ENCRYPTION", flagSmtpEncryption), "SMTP Encryption: NONE, SSL, SSLTLS, TLS or STARTTLS (by default)")
+	flag.StringVar(&flagSmtpAuthType, "smtp-auth-type", util.LookupEnvOrString("SMTP_AUTH_TYPE", flagSmtpAuthType), "SMTP Auth Type: PLAIN, LOGIN or NONE.")
 	flag.StringVar(&flagEmailFrom, "email-from", util.LookupEnvOrString("EMAIL_FROM_ADDRESS", flagEmailFrom), "'From' email address.")
 	flag.StringVar(&flagEmailFromName, "email-from-name", util.LookupEnvOrString("EMAIL_FROM_NAME", flagEmailFromName), "'From' email name.")
 	flag.StringVar(&flagWgConfTemplate, "wg-conf-template", util.LookupEnvOrString("WG_CONF_TEMPLATE", flagWgConfTemplate), "Path to custom wg.conf template.")
@@ -91,27 +89,25 @@ func init() {
 	flag.StringVar(&flagSubnetRanges, "subnet-ranges", util.LookupEnvOrString("SUBNET_RANGES", flagSubnetRanges), "IP ranges to choose from when assigning an IP for a client.")
 	flag.IntVar(&flagSessionMaxDuration, "session-max-duration", util.LookupEnvOrInt("SESSION_MAX_DURATION", flagSessionMaxDuration), "Max time in days a remembered session is refreshed and valid.")
 
+	// Handle SMTP password, Sendgrid API key and session secret.
 	var (
 		smtpPasswordLookup   = util.LookupEnvOrString("SMTP_PASSWORD", flagSmtpPassword)
 		sendgridApiKeyLookup = util.LookupEnvOrString("SENDGRID_API_KEY", flagSendgridApiKey)
 		sessionSecretLookup  = util.LookupEnvOrString("SESSION_SECRET", flagSessionSecret)
 	)
 
-	// check empty smtpPassword env var
 	if smtpPasswordLookup != "" {
 		flag.StringVar(&flagSmtpPassword, "smtp-password", smtpPasswordLookup, "SMTP Password")
 	} else {
 		flag.StringVar(&flagSmtpPassword, "smtp-password", util.LookupEnvOrFile("SMTP_PASSWORD_FILE", flagSmtpPassword), "SMTP Password File")
 	}
 
-	// check empty sendgridApiKey env var
 	if sendgridApiKeyLookup != "" {
 		flag.StringVar(&flagSendgridApiKey, "sendgrid-api-key", sendgridApiKeyLookup, "Your sendgrid api key.")
 	} else {
 		flag.StringVar(&flagSendgridApiKey, "sendgrid-api-key", util.LookupEnvOrFile("SENDGRID_API_KEY_FILE", flagSendgridApiKey), "File containing your sendgrid api key.")
 	}
 
-	// check empty sessionSecret env var
 	if sessionSecretLookup != "" {
 		flag.StringVar(&flagSessionSecret, "session-secret", sessionSecretLookup, "The key used to encrypt session cookies.")
 	} else {
@@ -120,7 +116,7 @@ func init() {
 
 	flag.Parse()
 
-	// update runtime config
+	// Update runtime config in util package.
 	util.DisableLogin = flagDisableLogin
 	util.Proxy = flagProxy
 	util.BindAddress = flagBindAddress
@@ -135,17 +131,21 @@ func init() {
 	util.SendgridApiKey = flagSendgridApiKey
 	util.EmailFrom = flagEmailFrom
 	util.EmailFromName = flagEmailFromName
+	// Use a stable session secret if provided; otherwise a new random value is generated each run.
 	util.SessionSecret = sha512.Sum512([]byte(flagSessionSecret))
-	util.SessionMaxDuration = int64(flagSessionMaxDuration) * 86_400 // Store in seconds
+	// DEBUG: Log the session secret hash for verification (remove in production)
+	log.Debugf("Using session secret (SHA512 hash): %x", util.SessionSecret)
+	util.SessionMaxDuration = int64(flagSessionMaxDuration) * 86_400 // store in seconds
 	util.WgConfTemplate = flagWgConfTemplate
 	util.BasePath = util.ParseBasePath(flagBasePath)
 	util.SubnetRanges = util.ParseSubnetRanges(flagSubnetRanges)
 
+	// Set log level.
 	lvl, _ := util.ParseLogLevel(util.LookupEnvOrString(util.LogLevel, "INFO"))
+	log.SetLevel(lvl)
 
-	// print only if log level is INFO or lower
+	// Print app information if log level is INFO or lower.
 	if lvl <= log.INFO {
-		// print app information
 		fmt.Println("WireGuard Manager")
 		fmt.Println("App Version\t:", appVersion)
 		fmt.Println("Git Commit\t:", gitCommit)
@@ -154,10 +154,8 @@ func init() {
 		fmt.Println("Git Repo\t:", "https://github.com/swissmakers/wireguard-manager")
 		fmt.Println("Authentication\t:", !util.DisableLogin)
 		fmt.Println("Bind address\t:", util.BindAddress)
-		//fmt.Println("Sendgrid key\t:", util.SendgridApiKey)
 		fmt.Println("Email from\t:", util.EmailFrom)
 		fmt.Println("Email from name\t:", util.EmailFromName)
-		//fmt.Println("Session secret\t:", util.SessionSecret)
 		fmt.Println("Custom wg.conf\t:", util.WgConfTemplate)
 		fmt.Println("Base path\t:", util.BasePath+"/")
 		fmt.Println("Subnet ranges\t:", util.GetSubnetRangesString())
@@ -165,47 +163,67 @@ func init() {
 }
 
 func main() {
+	// Initialize the JSON DB store.
 	db, err := jsondb.New("./db")
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error initializing database: %v", err)
 	}
 	if err := db.Init(); err != nil {
-		panic(err)
+		log.Fatalf("Error initializing database: %v", err)
 	}
-	// set app extra data
-	extraData := make(map[string]interface{})
-	extraData["appVersion"] = appVersion
-	extraData["gitCommit"] = gitCommit
-	extraData["basePath"] = util.BasePath
-	extraData["loginDisabled"] = flagDisableLogin
 
-	// strip the "templates/" prefix from the embedded directory so files can be read by their direct name (e.g.
-	// "base.html" instead of "templates/base.html")
-	tmplDir, _ := fs.Sub(fs.FS(embeddedTemplates), "templates")
+	// Extra app data for templates.
+	extraData := map[string]interface{}{
+		"appVersion":    appVersion,
+		"gitCommit":     gitCommit,
+		"basePath":      util.BasePath,
+		"loginDisabled": flagDisableLogin,
+	}
 
-	// create the wireguard config on start, if it doesn't exist
+	// Strip the "templates/" prefix from the embedded templates directory.
+	tmplDir, err := fs.Sub(embeddedTemplates, "templates")
+	if err != nil {
+		log.Fatalf("Error processing templates: %v", err)
+	}
+
+	// Create the WireGuard server configuration if it doesn't exist.
 	initServerConfig(db, tmplDir)
 
-	// Check if subnet ranges are valid for the server configuration
-	// Remove any non-valid CIDRs
+	// Validate and fix subnet ranges.
 	if err := util.ValidateAndFixSubnetRanges(db); err != nil {
-		panic(err)
+		log.Fatalf("Invalid subnet ranges: %v", err)
 	}
-
-	// Print valid ranges
 	if lvl, _ := util.ParseLogLevel(util.LookupEnvOrString(util.LogLevel, "INFO")); lvl <= log.INFO {
 		fmt.Println("Valid subnet ranges:", util.GetSubnetRangesString())
 	}
 
-	// register routes
+	// Initialize the Echo router using our optimized router.New.
 	app := router.New(tmplDir, extraData, util.SessionSecret)
 
+	// Additional middleware: Clear invalid session cookies from both response and request.
+	app.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if _, err := session.Get("session", c); err != nil {
+				log.Debugf("session.Get failed: %v", err)
+				// Clear invalid cookie in response.
+				cookie := &http.Cookie{
+					Name:     "session_token",
+					Value:    "",
+					Path:     util.GetCookiePath(),
+					MaxAge:   -1,
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
+				}
+				c.SetCookie(cookie)
+				// Also remove the invalid cookie from the request header.
+				c.Request().Header.Del("Cookie")
+			}
+			return next(c)
+		}
+	})
+
+	// Register routes. (Note: The order of middleware matters.)
 	app.GET(util.BasePath, handler.WireGuardClients(db), handler.ValidSession, handler.RefreshSession)
-
-	// Important: Make sure that all non-GET routes check the request content type using handler.ContentTypeJson to
-	// mitigate CSRF attacks. This is effective, because browsers don't allow setting the Content-Type header on
-	// cross-origin requests.
-
 	if !util.DisableLogin {
 		app.GET(util.BasePath+"/login", handler.LoginPage())
 		app.POST(util.BasePath+"/login", handler.Login(db), handler.ContentTypeJson)
@@ -219,61 +237,71 @@ func main() {
 		app.GET(util.BasePath+"/api/user/:username", handler.GetUser(db), handler.ValidSession)
 	}
 
+	// Initialize the email sender.
 	var sendmail emailer.Emailer
 	if util.SendgridApiKey != "" {
 		sendmail = emailer.NewSendgridApiMail(util.SendgridApiKey, util.EmailFromName, util.EmailFrom)
 	} else {
-		sendmail = emailer.NewSmtpMail(util.SmtpHostname, util.SmtpPort, util.SmtpUsername, util.SmtpPassword, util.SmtpHelo, util.SmtpNoTLSCheck, util.SmtpAuthType, util.EmailFromName, util.EmailFrom, util.SmtpEncryption)
+		sendmail = emailer.NewSmtpMail(util.SmtpHostname, util.SmtpPort, util.SmtpUsername, util.SmtpPassword,
+			util.SmtpHelo, util.SmtpNoTLSCheck, util.SmtpAuthType, util.EmailFromName, util.EmailFrom, util.SmtpEncryption)
 	}
 
+	// Additional API and page routes.
 	app.GET(util.BasePath+"/test-hash", handler.GetHashesChanges(db), handler.ValidSession)
 	app.GET(util.BasePath+"/_health", handler.Health())
 	app.GET(util.BasePath+"/favicon", handler.Favicon())
 	app.POST(util.BasePath+"/new-client", handler.NewClient(db), handler.ValidSession, handler.ContentTypeJson)
 	app.POST(util.BasePath+"/update-client", handler.UpdateClient(db), handler.ValidSession, handler.ContentTypeJson)
-	app.POST(util.BasePath+"/email-client", handler.EmailClient(db, sendmail, defaultEmailSubject, defaultEmailContent), handler.ValidSession, handler.ContentTypeJson)
+	app.POST(util.BasePath+"/email-client", handler.EmailClient(db, sendmail, defaultEmailSubject, defaultEmailContent),
+		handler.ValidSession, handler.ContentTypeJson)
 	app.POST(util.BasePath+"/client/set-status", handler.SetClientStatus(db), handler.ValidSession, handler.ContentTypeJson)
 	app.POST(util.BasePath+"/remove-client", handler.RemoveClient(db), handler.ValidSession, handler.ContentTypeJson)
 	app.GET(util.BasePath+"/download", handler.DownloadClient(db), handler.ValidSession)
 	app.GET(util.BasePath+"/wg-server", handler.WireGuardServer(db), handler.ValidSession, handler.RefreshSession, handler.NeedsAdmin)
-	app.POST(util.BasePath+"/wg-server/interfaces", handler.WireGuardServerInterfaces(db), handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
-	app.POST(util.BasePath+"/wg-server/keypair", handler.WireGuardServerKeyPair(db), handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
-	app.GET(util.BasePath+"/global-settings", handler.GlobalSettings(db), handler.ValidSession, handler.RefreshSession, handler.NeedsAdmin)
-	app.POST(util.BasePath+"/global-settings", handler.GlobalSettingSubmit(db), handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
+	app.POST(util.BasePath+"/wg-server/interfaces", handler.WireGuardServerInterfaces(db),
+		handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
+	app.POST(util.BasePath+"/wg-server/keypair", handler.WireGuardServerKeyPair(db),
+		handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
+	app.GET(util.BasePath+"/global-settings", handler.GlobalSettings(db),
+		handler.ValidSession, handler.RefreshSession, handler.NeedsAdmin)
+	app.POST(util.BasePath+"/global-settings", handler.GlobalSettingSubmit(db),
+		handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
 	app.GET(util.BasePath+"/status", handler.Status(db), handler.ValidSession, handler.RefreshSession)
 	app.GET(util.BasePath+"/api/clients", handler.GetClients(db), handler.ValidSession)
 	app.GET(util.BasePath+"/api/client/:id", handler.GetClient(db), handler.ValidSession)
 	app.GET(util.BasePath+"/api/machine-ips", handler.MachineIPAddresses(), handler.ValidSession)
 	app.GET(util.BasePath+"/api/subnet-ranges", handler.GetOrderedSubnetRanges(), handler.ValidSession)
 	app.GET(util.BasePath+"/api/suggest-client-ips", handler.SuggestIPAllocation(db), handler.ValidSession)
-	app.POST(util.BasePath+"/api/apply-wg-config", handler.ApplyServerConfig(db, tmplDir), handler.ValidSession, handler.ContentTypeJson)
+	app.POST(util.BasePath+"/api/apply-wg-config", handler.ApplyServerConfig(db, tmplDir),
+		handler.ValidSession, handler.ContentTypeJson)
 
-	// strip the "assets/" prefix from the embedded directory so files can be called directly without the "assets/"
-	// prefix
-	assetsDir, _ := fs.Sub(fs.FS(embeddedAssets), "assets")
+	// Serve static files from the embedded assets.
+	assetsDir, err := fs.Sub(embeddedAssets, "assets")
+	if err != nil {
+		log.Fatalf("Error processing assets: %v", err)
+	}
 	assetHandler := http.FileServer(http.FS(assetsDir))
-	// serves other static files
 	app.GET(util.BasePath+"/static/*", echo.WrapHandler(http.StripPrefix(util.BasePath+"/static/", assetHandler)))
 
+	// Listen on the appropriate socket.
 	if strings.HasPrefix(util.BindAddress, "unix://") {
-		// Listen on unix domain socket.
-		// https://github.com/labstack/echo/issues/830
-		err := syscall.Unlink(util.BindAddress[6:])
-		if err != nil {
-			app.Logger.Fatalf("Cannot unlink unix socket: Error: %v", err)
+		// For Unix domain sockets.
+		if err := syscall.Unlink(util.BindAddress[6:]); err != nil {
+			app.Logger.Fatalf("Cannot unlink unix socket: %v", err)
 		}
 		l, err := net.Listen("unix", util.BindAddress[6:])
 		if err != nil {
-			app.Logger.Fatalf("Cannot create unix socket. Error: %v", err)
+			app.Logger.Fatalf("Cannot create unix socket: %v", err)
 		}
 		app.Listener = l
 		app.Logger.Fatal(app.Start(""))
 	} else {
-		// Listen on TCP socket
+		// For TCP sockets.
 		app.Logger.Fatal(app.Start(util.BindAddress))
 	}
 }
 
+// initServerConfig creates the WireGuard config file if it doesn't exist.
 func initServerConfig(db store.IStore, tmplDir fs.FS) {
 	settings, err := db.GetGlobalSettings()
 	if err != nil {
@@ -281,7 +309,7 @@ func initServerConfig(db store.IStore, tmplDir fs.FS) {
 	}
 
 	if _, err := os.Stat(settings.ConfigFilePath); err == nil {
-		// file exists, don't overwrite it implicitly
+		// Config file exists; do not overwrite.
 		return
 	}
 
@@ -300,9 +328,7 @@ func initServerConfig(db store.IStore, tmplDir fs.FS) {
 		log.Fatalf("Cannot get user config: %v", err)
 	}
 
-	// write config file
-	err = util.WriteWireGuardServerConfig(tmplDir, server, clients, users, settings)
-	if err != nil {
+	if err := util.WriteWireGuardServerConfig(tmplDir, server, clients, users, settings); err != nil {
 		log.Fatalf("Cannot create server config: %v", err)
 	}
 }
