@@ -32,44 +32,47 @@ VPN Connected Users (Peers)
     <div class="container-fluid">
         {{ if .error }}
         <div class="alert alert-warning" role="alert">{{.error}}</div>
-        {{ end}}
+        {{ end }}
         {{ range $dev := .devices }}
-            <table class="table table-sm">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-striped">
                 <caption>List of connected peers for device with name {{ $dev.Name }} </caption>
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">Name</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Allocated IPs</th>
-                  <th scope="col">Endpoint</th>
-                  <th scope="col">Public Key</th>
-                  <th scope="col">Received</th>
-                  <th scope="col">Transmitted</th>
-                  <th scope="col">Connected (Approximation)</th>
-                  <th scope="col">Last Handshake</th>
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Allocated IPs</th>
+                        <th scope="col">Endpoint</th>
+                        <th scope="col">Public Key</th>
+                        <th scope="col">Received</th>
+                        <th scope="col">Transmitted</th>
+                        <th scope="col">Connected (Approximation)</th>
+                        <th scope="col">Last Handshake</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {{ range $idx, $peer := $dev.Peers }}
+                <tr {{ if $peer.Connected }} class="table-success" {{ end }}>
+                    <th scope="row">{{ $idx }}</th>
+                    <td>{{ $peer.Name }}</td>
+                    <td>{{ $peer.Email }}</td>
+                    <td>{{ $peer.AllocatedIP }}</td>
+                    <td>{{ $peer.Endpoint }}</td>
+                    <td>{{ $peer.PublicKey }}</td>
+                    <td title="{{ $peer.ReceivedBytes }} Bytes"><script>document.write(bytesToHumanReadable({{ $peer.ReceivedBytes }}))</script></td>
+                    <td title="{{ $peer.TransmitBytes }} Bytes"><script>document.write(bytesToHumanReadable({{ $peer.TransmitBytes }}))</script></td>
+                    <td>{{ if $peer.Connected }}✓{{end}}</td>
+                    <td>{{ $peer.LastHandshakeTime.Format "2006-01-02 15:04:05 MST" }}</td>
                 </tr>
-              </thead>
-              <tbody>
-              {{ range $idx, $peer := $dev.Peers }}
-              <tr {{ if $peer.Connected }} class="table-success" {{ end }}>
-                <th scope="row">{{ $idx }}</th>
-                <td>{{ $peer.Name }}</td>
-                <td>{{ $peer.Email }}</td>
-                <td>{{ $peer.AllocatedIP }}</td>
-                <td>{{ $peer.Endpoint }}</td>
-                <td>{{ $peer.PublicKey }}</td>
-                <td title="{{ $peer.ReceivedBytes }} Bytes"><script>document.write(bytesToHumanReadable({{ $peer.ReceivedBytes }}))</script></td>
-                <td title="{{ $peer.TransmitBytes }} Bytes"><script>document.write(bytesToHumanReadable({{ $peer.TransmitBytes }}))</script></td>
-                <td>{{ if $peer.Connected }}✓{{end}}</td>
-                <td>{{ $peer.LastHandshakeTime.Format "2006-01-02 15:04:05 MST" }}</td>
-               </tr>
-              {{ end }}
-              </tbody>
+                {{ end }}
+                </tbody>
             </table>
+        </div>
         {{ end }}
     </div>
 </section>
 {{end}}
+
 {{define "bottom_js"}}
 {{end}}
