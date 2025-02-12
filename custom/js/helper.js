@@ -51,8 +51,7 @@ function renderClientList(data) {
                         data-clientname="${escapeHtml(obj.Client.name)}">Email</button>
               </div>
               <div class="btn-group">
-                <button type="button" class="btn btn-outline-danger btn-sm">More</button>
-                <button type="button" class="btn btn-outline-danger btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown"></button>
+                <button type="button" class="btn btn-outline-danger btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">More </button>
                 <div class="dropdown-menu" role="menu">
                   <a class="dropdown-item" href="#" data-toggle="modal"
                      data-target="#modal_edit_client" data-clientid="${obj.Client.id}"

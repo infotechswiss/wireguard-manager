@@ -54,11 +54,7 @@ func BuildClientConfig(client model.Client, server model.Server, setting model.G
 	if client.PresharedKey != "" {
 		peerPresharedKey = fmt.Sprintf("PresharedKey = %s\n", client.PresharedKey)
 	}
-	//peerAllowedIPs := fmt.Sprintf("AllowedIPs = %s\n", strings.Join(client.AllowedIPs, ","))
-	allowedIPs := filterEmpty(client.AllowedIPs)
-	joined := strings.Join(allowedIPs, ",")
-	joined = strings.TrimSuffix(joined, ",") // Remove any trailing comma.
-	peerAllowedIPs := fmt.Sprintf("AllowedIPs = %s\n", joined)
+	peerAllowedIPs := fmt.Sprintf("AllowedIPs = %s\n", strings.Join(client.AllowedIPs, ","))
 
 	desiredHost := setting.EndpointAddress
 	desiredPort := server.Interface.ListenPort
@@ -722,18 +718,6 @@ func GetCookiePath() string {
 		return "/"
 	}
 	return BasePath
-}
-
-// filterEmpty returns a new slice containing only non-empty strings.
-func filterEmpty(strs []string) []string {
-	var out []string
-	for _, s := range strs {
-		trimmed := strings.TrimSpace(s)
-		if trimmed != "" {
-			out = append(out, trimmed)
-		}
-	}
-	return out
 }
 
 // GetPersistedSessionSecret retrieves a stable session secret from the JSON DB.
