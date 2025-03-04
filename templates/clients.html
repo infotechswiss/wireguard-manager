@@ -159,14 +159,6 @@ VPN WireGuard Clients
                             <input type="text" class="form-control" id="_client_preshared_key" name="_client_preshared_key">
                         </div>
                     </details>
-                    <details style="margin-top: 0.5rem;">
-                        <summary><strong>Additional configuration</strong>
-                        </summary>
-                        <div class="form-group">
-                            <label for="_additional_notes" class="control-label">Notes</label>
-                            <textarea class="form-control" style="min-height: 6rem;" id="_additional_notes" name="_additional_notes" placeholder="Additional notes about this client"></textarea>
-                        </div>
-                    </details>
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
@@ -376,11 +368,6 @@ VPN WireGuard Clients
                 }
             })
             let upperQuery = query.toUpperCase()
-            $(".fa-additional_notes").each(function () {
-                if ($(this).parent().text().trim().indexOf(upperQuery) != -1) {
-                    $(this).closest('.col-lg-4').show();
-                }
-            })
         })
 
         $("#status-selector").on('change', function () {
@@ -603,8 +590,6 @@ VPN WireGuard Clients
 
                         modal.find("#_client_public_key").val(client.public_key);
                         modal.find("#_client_preshared_key").val(client.preshared_key);
-                        
-                        modal.find("#_additional_notes").val(client.additional_notes);
 
                         // handle subnet range select
                         $('#_subnet_ranges').on('select2:select', function (e) {
@@ -702,11 +687,9 @@ VPN WireGuard Clients
                 enabled = true;
             }
 
-            const additional_notes = $("#_additional_notes").val();
-
             const data = {"id": client_id, "name": name, "email": email, "allocated_ips": allocated_ips,
                 "allowed_ips": allowed_ips, "extra_allowed_ips": extra_allowed_ips, "endpoint": endpoint,
-                "use_server_dns": use_server_dns, "enabled": enabled, "public_key": public_key, "preshared_key": preshared_key, "additional_notes": additional_notes};
+                "use_server_dns": use_server_dns, "enabled": enabled, "public_key": public_key, "preshared_key": preshared_key};
 
             $.ajax({
                 cache: false,

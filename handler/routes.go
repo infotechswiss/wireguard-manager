@@ -680,7 +680,6 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		client.PublicKey = clientUpdate.PublicKey
 		client.PresharedKey = clientUpdate.PresharedKey
 		client.UpdatedAt = time.Now().UTC()
-		client.AdditionalNotes = strings.ReplaceAll(strings.Trim(clientUpdate.AdditionalNotes, "\r\n"), "\r\n", "\n")
 
 		// Save the updated client.
 		if err := db.SaveClient(client); err != nil {
