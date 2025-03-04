@@ -170,12 +170,18 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
     firewall-cmd --reload
     ```
 
+    10.1. **Also pre-define the later used rich-rule for VPN traffic from your VPN interface to your LAN**:
+    ```bash
+    firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.8.0.0/24" masquerade'
+    firewall-cmd --reload
+    ```
+
 11. **Build the `wireguard-manager` and chown to right user**:
     ```bash
     cd /opt/wireguard-manager
     ./prepare_assets.sh
     go build -o wireguard-manager
-    chown -R wireguard:wireguard /opt/wireguard_environment.conf /etc/wireguard/wg0.conf
+    chown -R wireguard:wireguard /opt/wireguard_environment.conf /opt/wireguard-manager/ /etc/wireguard/wg0.conf
     ```
 
 12. If you also using SELinux keep that in mind as well. There are some additionals settings needed. (Will be documented later.)
@@ -184,6 +190,14 @@ Below is a step-by-step guide demonstrating how to set up `wireguard-manager` **
     ```bash
     systemctl daemon-reload
     systemctl enable wireguard-manager.service --now
+    systemctl status wireguard-manager.service
+    ```
+
+    13.1 On SELinux enabled servers it will fail here. You need to do the following:
+    ```bash
+    restorecon -Rv /opt/
+    setsebool -P domain_can_mmap_files on
+    systemctl restart wireguard-manager.service
     systemctl status wireguard-manager.service
     ```
 
