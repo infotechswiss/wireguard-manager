@@ -33,19 +33,16 @@
             background-color: #121212;
             color: #e0e0e0;
         }
-        .navbar, .main-sidebar, .sidebar {
+        .navbar, .main-sidebar, .sidebar, .modal-body, .modal-footer {
             background-color: #1e1e1e;
         }
-        .nav-link, .navbar-nav .nav-item .nav-link {
+        .navbar-light .navbar-nav .nav-link, .nav-link, .navbar-nav .nav-item .nav-link {
             color: #b0b0b0;
         }
-        .navbar-light .navbar-nav .nav-link {
-            color: #b0b0b0;
-        }
-        .navbar-light .navbar-nav .nav-link:hover {
+        .navbar-light .navbar-nav .nav-link:hover, .modal-body, .btn {
             color: #ffffff;
         }
-        .main-footer {
+        .main-footer, .btn-default {
             background-color: #1c1c1c;
             color: #e0e0e0;
         }
@@ -64,6 +61,9 @@
             background-color: #4e73df;
             color: #ffffff;
         }
+        .card .overlay, .info-box .overlay, .overlay-wrapper .overlay, .small-box .overlay {
+            background-color: rgb(255 184 184 / 70%);
+        }
         .btn-outline-danger {
             border-color: #e74a3b;
             color: #e74a3b;
@@ -77,6 +77,9 @@
             background-color: #333333 !important;
             color: #e0e0e0 !important;
             border: 1px solid #555 !important;
+        }
+        #dns_servers_tag, #addresses_tag, #client_allocated_ips_tag, #client_allowed_ips_tag {
+            border: inherit !important;
         }
         input::placeholder, select::placeholder, textarea::placeholder, #search-input::placeholder {
             color: #b0b0b0;
@@ -687,7 +690,7 @@
                 });
             });
         }
-        
+
         // New Client modal event.
         $(document).ready(function () {
             $("#modal_new_client").on('shown.bs.modal', function () {
