@@ -680,7 +680,6 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		client.PublicKey = clientUpdate.PublicKey
 		client.PresharedKey = clientUpdate.PresharedKey
 		client.UpdatedAt = time.Now().UTC()
-		client.AdditionalNotes = strings.ReplaceAll(strings.Trim(clientUpdate.AdditionalNotes, "\r\n"), "\r\n", "\n")
 
 		// Save the updated client.
 		if err := db.SaveClient(client); err != nil {
@@ -746,7 +745,7 @@ func DownloadClient(db store.IStore) echo.HandlerFunc {
 		}
 		config := util.BuildClientConfig(*clientData.Client, server, globalSettings)
 		reader := strings.NewReader(config)
-		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s.conf", clientData.Client.Name))
+		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s.conf", clientData.Client.Email))
 		return c.Stream(http.StatusOK, "text/conf", reader)
 	}
 }
@@ -842,101 +841,123 @@ func GlobalSettings(db store.IStore) echo.HandlerFunc {
 	}
 }
 
-// Status handler displays WireGuard status information.
+// Status renders the HTML page for VPN status.
 func Status(db store.IStore) echo.HandlerFunc {
+	// code that renders the effective "status.html" with the default variables
+	return func(c echo.Context) error {
+		return c.Render(http.StatusOK, "status.html", map[string]interface{}{
+			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+			"devices":  nil,
+		})
+	}
+}
+
+// APIStatus returns the current WireGuard status as JSON.
+// This handler is intended to be polled via AJAX to update the VPN status table dynamically.
+func APIStatus(db store.IStore) echo.HandlerFunc {
+	// Define the view model structures.
 	type PeerVM struct {
-		Name              string
-		Email             string
-		PublicKey         string
-		ReceivedBytes     int64
-		TransmitBytes     int64
-		LastHandshakeTime time.Time
-		LastHandshakeRel  time.Duration
-		Connected         bool
-		AllocatedIP       string
-		Endpoint          string
+		Name              string        `json:"name"`
+		Email             string        `json:"email"`
+		PublicKey         string        `json:"public_key"`
+		ReceivedBytes     int64         `json:"received_bytes"`
+		TransmitBytes     int64         `json:"transmit_bytes"`
+		LastHandshakeTime time.Time     `json:"last_handshake_time"`
+		LastHandshakeRel  time.Duration `json:"last_handshake_rel"`
+		Connected         bool          `json:"connected"`
+		AllocatedIP       string        `json:"allocated_ip"`
+		Endpoint          string        `json:"endpoint,omitempty"`
 	}
 	type DeviceVM struct {
-		Name  string
-		Peers []PeerVM
+		Name  string   `json:"name"`
+		Peers []PeerVM `json:"peers"`
 	}
+
 	return func(c echo.Context) error {
+		// Create a new WireGuard client.
 		wgClient, err := wgctrl.New()
 		if err != nil {
-			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
-				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-				"error":    err.Error(),
-				"devices":  nil,
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": err.Error(),
 			})
 		}
-
+		// Retrieve the list of WireGuard clients.
 		devices, err := wgClient.Devices()
 		if err != nil {
-			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
-				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-				"error":    err.Error(),
-				"devices":  nil,
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": err.Error(),
 			})
 		}
-
-		devicesVm := make([]DeviceVM, 0, len(devices))
+		// Prepare the device view model.
+		var devicesVM []DeviceVM
 		if len(devices) > 0 {
-			m := make(map[string]*model.Client)
+			// Create a map of clients keyed by public key.
 			clients, err := db.GetClients(false)
 			if err != nil {
-				return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
-					"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-					"error":    err.Error(),
-					"devices":  nil,
+				return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+					"error": err.Error(),
 				})
 			}
+			clientMap := make(map[string]*model.Client)
 			for i := range clients {
 				if clients[i].Client != nil {
-					m[clients[i].Client.PublicKey] = clients[i].Client
+					clientMap[clients[i].Client.PublicKey] = clients[i].Client
 				}
 			}
-
+			// Helper map for sorting based on connection status.
 			conv := map[bool]int{true: 1, false: 0}
-			for i := range devices {
-				devVm := DeviceVM{Name: devices[i].Name}
-				for j := range devices[i].Peers {
+
+			for _, dev := range devices {
+				devVm := DeviceVM{
+					Name: dev.Name,
+				}
+				// Process each peer on the device.
+				for _, peer := range dev.Peers {
 					var allocatedIPs string
-					for _, ip := range devices[i].Peers[j].AllowedIPs {
-						if len(allocatedIPs) > 0 {
+					// Concatenate all allowed IPs (as strings) separated by line breaks.
+					for _, ip := range peer.AllowedIPs {
+						if allocatedIPs != "" {
 							allocatedIPs += "</br>"
 						}
 						allocatedIPs += ip.String()
 					}
+
 					pVm := PeerVM{
-						PublicKey:         devices[i].Peers[j].PublicKey.String(),
-						ReceivedBytes:     devices[i].Peers[j].ReceiveBytes,
-						TransmitBytes:     devices[i].Peers[j].TransmitBytes,
-						LastHandshakeTime: devices[i].Peers[j].LastHandshakeTime,
-						LastHandshakeRel:  time.Since(devices[i].Peers[j].LastHandshakeTime),
+						PublicKey:         peer.PublicKey.String(),
+						ReceivedBytes:     peer.ReceiveBytes,
+						TransmitBytes:     peer.TransmitBytes,
+						LastHandshakeTime: peer.LastHandshakeTime,
+						LastHandshakeRel:  time.Since(peer.LastHandshakeTime),
 						AllocatedIP:       allocatedIPs,
 					}
-					// Mark as connected if handshake was less than 3 minutes ago.
+					// Mark as connected if the last handshake was less than 3 minutes ago.
 					pVm.Connected = pVm.LastHandshakeRel.Minutes() < 3.0
-
+					// If the user is an admin, add the endpoint information.
 					if isAdmin(c) {
-						pVm.Endpoint = devices[i].Peers[j].Endpoint.String()
+						pVm.Endpoint = peer.Endpoint.String()
 					}
-					if _client, ok := m[pVm.PublicKey]; ok {
-						pVm.Name = _client.Name
-						pVm.Email = _client.Email
+					// If we have additional client info, use it.
+					if client, ok := clientMap[pVm.PublicKey]; ok {
+						pVm.Name = client.Name
+						pVm.Email = client.Email
 					}
 					devVm.Peers = append(devVm.Peers, pVm)
 				}
-				sort.SliceStable(devVm.Peers, func(i, j int) bool { return devVm.Peers[i].Name < devVm.Peers[j].Name })
-				sort.SliceStable(devVm.Peers, func(i, j int) bool { return conv[devVm.Peers[i].Connected] > conv[devVm.Peers[j].Connected] })
-				devicesVm = append(devicesVm, devVm)
+
+				// Sort peers alphabetically and by connection status.
+				sort.SliceStable(devVm.Peers, func(i, j int) bool {
+					return devVm.Peers[i].Name < devVm.Peers[j].Name
+				})
+				sort.SliceStable(devVm.Peers, func(i, j int) bool {
+					return conv[devVm.Peers[i].Connected] > conv[devVm.Peers[j].Connected]
+				})
+				devicesVM = append(devicesVM, devVm)
 			}
 		}
 
-		return c.Render(http.StatusOK, "status.html", map[string]interface{}{
-			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-			"devices":  devicesVm,
-			"error":    "",
+		// Return the final client-devices status as JSON.
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"devices": devicesVM,
 		})
 	}
 }

@@ -522,14 +522,6 @@ func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, client
 		}
 		tmplWireGuardConf = fileContent
 	}
-	// Escape multiline notes.
-	var escapedClientDataList []model.ClientData
-	for _, cd := range clientDataList {
-		if cd.Client.AdditionalNotes != "" {
-			cd.Client.AdditionalNotes = strings.ReplaceAll(cd.Client.AdditionalNotes, "\n", "\n# ")
-		}
-		escapedClientDataList = append(escapedClientDataList, cd)
-	}
 	tmplParsed, err := template.New("wg_config").Parse(tmplWireGuardConf)
 	if err != nil {
 		return err
@@ -541,7 +533,7 @@ func WriteWireGuardServerConfig(tmplDir fs.FS, serverConfig model.Server, client
 	defer f.Close()
 	config := map[string]interface{}{
 		"serverConfig":   serverConfig,
-		"clientDataList": escapedClientDataList,
+		"clientDataList": clientDataList,
 		"globalSettings": globalSettings,
 		"usersList":      usersList,
 	}

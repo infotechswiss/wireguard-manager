@@ -24,11 +24,6 @@ function renderClientList(data) {
         ? obj.Client.subnet_ranges.join(',')
         : '';
   
-      // Render additional notes (hidden by default).
-      const additionalNotesHtml = (obj.Client.additional_notes && obj.Client.additional_notes.length > 0)
-        ? `<div style="display: none"><i class="fas fa-additional_notes"></i>${escapeHtml(obj.Client.additional_notes.toUpperCase())}</div>`
-        : '';
-  
       // Build the client card HTML.
       const html = `
         <div class="col-sm-6 col-md-6 col-lg-4" id="client_${obj.Client.id}">
@@ -69,12 +64,10 @@ function renderClientList(data) {
               <div class="info-box-text"><i class="fas fa-user"></i> ${escapeHtml(obj.Client.name)}</div>
               <div style="display: none"><i class="fas fa-key"></i> ${escapeHtml(obj.Client.public_key)}</div>
               <div style="display: none"><i class="fas fa-subnetrange"></i> ${escapeHtml(subnetRangesString)}</div>
-              ${additionalNotesHtml}
               <div class="info-box-text"><i class="fas fa-envelope"></i> ${escapeHtml(obj.Client.email)}</div>
               <div class="info-box-text"><i class="fas fa-clock"></i> ${prettyDateTime(obj.Client.created_at)}</div>
               <div class="info-box-text"><i class="fas fa-history"></i> ${prettyDateTime(obj.Client.updated_at)}</div>
               <div class="info-box-text"><i class="fas fa-server" style="${obj.Client.use_server_dns ? 'opacity: 1.0' : 'opacity: 0.5'}"></i> ${obj.Client.use_server_dns ? 'DNS enabled' : 'DNS disabled'}</div>
-              <div class="info-box-text"><i class="fas fa-file"></i> ${escapeHtml(obj.Client.additional_notes)}</div>
               <div class="info-box-text"><strong>IP Allocation</strong></div>
               ${allocatedIpsHtml}
               <div class="info-box-text"><strong>Allowed IPs</strong></div>

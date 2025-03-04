@@ -41,9 +41,6 @@ type Client struct {
 	// Endpoint specifies the client's endpoint configuration.
 	Endpoint string `json:"endpoint"`
 
-	// AdditionalNotes are optional notes or comments about the client.
-	AdditionalNotes string `json:"additional_notes"`
-
 	// UseServerDNS indicates whether the client should use the server's DNS settings.
 	UseServerDNS bool `json:"use_server_dns"`
 

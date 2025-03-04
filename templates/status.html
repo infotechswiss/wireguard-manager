@@ -15,61 +15,89 @@ VPN Connected Users (Peers)
 
 {{define "page_content"}}
 <script>
-  function bytesToHumanReadable(temporal) {
-    const units = [" ", " K", " M", " G", " T", " P", " E", " Z", " Y"]
-    let pow = 0
-
-    while (temporal > 1024) {
-      temporal /= 1024
-      pow ++
-      if (pow == units.length-1) break
+  // Converts a number of bytes to a human-readable string.
+  function bytesToHumanReadable(bytes) {
+    const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let i = 0;
+    while (bytes >= 1024 && i < units.length - 1) {
+      bytes /= 1024;
+      i++;
     }
-
-    return parseFloat(temporal.toFixed(2)) + units[pow]+"B"
+    return bytes.toFixed(2) + " " + units[i];
   }
+
+  // Fetch and update the VPN status table.
+  function updateStatusTable() {
+  $.ajax({
+    url: "{{.basePath}}/api/connection-status",
+    method: "GET",
+    dataType: "json",
+    success: function(data) {
+      console.log("Received API status data:", data);
+      var devices = (data && data.devices && Array.isArray(data.devices)) ? data.devices : [];
+
+      // Clear the existing rows in the tbody
+      var $tbody = $('#status-table-container tbody');
+      $tbody.empty();
+
+      devices.forEach(function(dev) {
+        dev.peers.forEach(function(peer, idx) {
+
+          // Create a new row
+          var newRow = '<tr ' + (peer.connected ? ' class="table-success"' : '') + '>';
+          newRow += '<th scope="row">' + idx + '</th>';
+          newRow += '<td>' + peer.name + '</td>';
+          newRow += '<td>' + peer.email + '</td>';
+          newRow += '<td>' + peer.allocated_ip + '</td>';
+          newRow += '<td>' + peer.endpoint + '</td>';
+          newRow += '<td>' + peer.public_key + '</td>';
+          newRow += '<td title="' + peer.received_bytes + ' Bytes">' + bytesToHumanReadable(peer.received_bytes) + '</td>';
+          newRow += '<td title="' + peer.transmit_bytes + ' Bytes">' + bytesToHumanReadable(peer.transmit_bytes) + '</td>';
+          newRow += '<td>' + (peer.connected ? '✓' : '') + '</td>';
+          newRow += '<td>' + new Date(peer.last_handshake_time).toLocaleString() + '</td>';
+          newRow += '</tr>';
+
+          // Append the new row to the tbody
+          $tbody.append(newRow);
+        });
+      });
+    },
+    error: function(err) {
+      console.error("Error updating status:", err);
+    }
+  });
+}
 </script>
+
 <section class="content">
     <div class="container-fluid">
         {{ if .error }}
         <div class="alert alert-warning" role="alert">{{.error}}</div>
         {{ end }}
-        {{ range $dev := .devices }}
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered table-striped">
-                <caption>List of connected peers for device with name {{ $dev.Name }} </caption>
-                <thead class="thead-dark">
-                    <tr>
-                        <th scope="col">#</th>
-                        <th scope="col">Name</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Allocated IPs</th>
-                        <th scope="col">Endpoint</th>
-                        <th scope="col">Public Key</th>
-                        <th scope="col">Received</th>
-                        <th scope="col">Transmitted</th>
-                        <th scope="col">Connected (Approximation)</th>
-                        <th scope="col">Last Handshake</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {{ range $idx, $peer := $dev.Peers }}
-                <tr {{ if $peer.Connected }} class="table-success" {{ end }}>
-                    <th scope="row">{{ $idx }}</th>
-                    <td>{{ $peer.Name }}</td>
-                    <td>{{ $peer.Email }}</td>
-                    <td>{{ $peer.AllocatedIP }}</td>
-                    <td>{{ $peer.Endpoint }}</td>
-                    <td>{{ $peer.PublicKey }}</td>
-                    <td title="{{ $peer.ReceivedBytes }} Bytes"><script>document.write(bytesToHumanReadable({{ $peer.ReceivedBytes }}))</script></td>
-                    <td title="{{ $peer.TransmitBytes }} Bytes"><script>document.write(bytesToHumanReadable({{ $peer.TransmitBytes }}))</script></td>
-                    <td>{{ if $peer.Connected }}✓{{end}}</td>
-                    <td>{{ $peer.LastHandshakeTime.Format "2006-01-02 15:04:05 MST" }}</td>
-                </tr>
-                {{ end }}
-                </tbody>
-            </table>
+        <div id="status-table-container">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-striped">
+                    <caption>List of connected peers for device wg0</caption>
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Allocated IPs</th>
+                            <th scope="col">Endpoint</th>
+                            <th scope="col">Public Key</th>
+                            <th scope="col">Received</th>
+                            <th scope="col">Transmitted</th>
+                            <th scope="col">Connected</th>
+                            <th scope="col">Last Handshake</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Client Rows will be appende here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
-        {{ end }}
     </div>
 </section>
 {{end}}
