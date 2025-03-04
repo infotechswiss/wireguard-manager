@@ -28,63 +28,76 @@ VPN Connected Users (Peers)
 
   // Fetch and update the VPN status table.
   function updateStatusTable() {
-    $.ajax({
-      url: "{{.basePath}}/api/connection-status", // Make sure your APIStatus endpoint is registered.
-      method: "GET",
-      dataType: "json",
-      success: function(data) {
-        console.log("Received API status data:", data);
-        // Use a fallback if devices is undefined.
-        var devices = (data && data.devices && Array.isArray(data.devices)) ? data.devices : [];
-        let html = "";
-        devices.forEach(function(dev) {
-          html += '<div class="table-responsive">';
-          html += '<table class="table table-sm table-bordered table-striped">';
-          html += '<caption>List of connected peers for device ' + dev.name + '</caption>';
-          html += '<thead class="thead-dark"><tr>';
-          html += '<th scope="col">#</th>';
-          html += '<th scope="col">Name</th>';
-          html += '<th scope="col">Email</th>';
-          html += '<th scope="col">Allocated IPs</th>';
-          html += '<th scope="col">Endpoint</th>';
-          html += '<th scope="col">Public Key</th>';
-          html += '<th scope="col">Received</th>';
-          html += '<th scope="col">Transmitted</th>';
-          html += '<th scope="col">Connected</th>';
-          html += '<th scope="col">Last Handshake</th>';
-          html += '</tr></thead>';
-          html += '<tbody>';
-          // Use the lowercase property names as provided by the API.
-          dev.peers.forEach(function(peer, idx) {
-            html += '<tr' + (peer.connected ? ' class="table-success"' : '') + '>';
-            html += '<th scope="row">' + idx + '</th>';
-            html += '<td>' + peer.name + '</td>';
-            html += '<td>' + peer.email + '</td>';
-            html += '<td>' + peer.allocated_ip + '</td>';
-            html += '<td>' + peer.endpoint + '</td>';
-            html += '<td>' + peer.public_key + '</td>';
-            html += '<td title="' + peer.received_bytes + ' Bytes">' + bytesToHumanReadable(peer.received_bytes) + '</td>';
-            html += '<td title="' + peer.transmit_bytes + ' Bytes">' + bytesToHumanReadable(peer.transmit_bytes) + '</td>';
-            html += '<td>' + (peer.connected ? '✓' : '') + '</td>';
-            html += '<td>' + new Date(peer.last_handshake_time).toLocaleString() + '</td>';
-            html += '</tr>';
-          });
-          html += '</tbody></table></div>';
+  $.ajax({
+    url: "{{.basePath}}/api/connection-status",
+    method: "GET",
+    dataType: "json",
+    success: function(data) {
+      console.log("Received API status data:", data);
+      var devices = (data && data.devices && Array.isArray(data.devices)) ? data.devices : [];
+
+      // Clear the existing rows in the tbody
+      var $tbody = $('#status-table-container tbody');
+      $tbody.empty();
+
+      devices.forEach(function(dev) {
+        dev.peers.forEach(function(peer, idx) {
+
+          // Create a new row
+          var newRow = '<tr ' + (peer.connected ? ' class="table-success"' : '') + '>';
+          newRow += '<th scope="row">' + idx + '</th>';
+          newRow += '<td>' + peer.name + '</td>';
+          newRow += '<td>' + peer.email + '</td>';
+          newRow += '<td>' + peer.allocated_ip + '</td>';
+          newRow += '<td>' + peer.endpoint + '</td>';
+          newRow += '<td>' + peer.public_key + '</td>';
+          newRow += '<td title="' + peer.received_bytes + ' Bytes">' + bytesToHumanReadable(peer.received_bytes) + '</td>';
+          newRow += '<td title="' + peer.transmit_bytes + ' Bytes">' + bytesToHumanReadable(peer.transmit_bytes) + '</td>';
+          newRow += '<td>' + (peer.connected ? '✓' : '') + '</td>';
+          newRow += '<td>' + new Date(peer.last_handshake_time).toLocaleString() + '</td>';
+          newRow += '</tr>';
+
+          // Append the new row to the tbody
+          $tbody.append(newRow);
         });
-        $("#status-table-container").html(html);
-      },
-      error: function(err) {
-        console.error("Error updating status:", err);
-      }
-    });
-  }
+      });
+    },
+    error: function(err) {
+      console.error("Error updating status:", err);
+    }
+  });
+}
 </script>
+
 <section class="content">
     <div class="container-fluid">
         {{ if .error }}
         <div class="alert alert-warning" role="alert">{{.error}}</div>
         {{ end }}
         <div id="status-table-container">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-striped">
+                    <caption>List of connected peers for device wg0</caption>
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Allocated IPs</th>
+                            <th scope="col">Endpoint</th>
+                            <th scope="col">Public Key</th>
+                            <th scope="col">Received</th>
+                            <th scope="col">Transmitted</th>
+                            <th scope="col">Connected</th>
+                            <th scope="col">Last Handshake</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Client Rows will be appende here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </section>
 {{end}}

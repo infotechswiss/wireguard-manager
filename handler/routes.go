@@ -746,7 +746,7 @@ func DownloadClient(db store.IStore) echo.HandlerFunc {
 		}
 		config := util.BuildClientConfig(*clientData.Client, server, globalSettings)
 		reader := strings.NewReader(config)
-		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s.conf", clientData.Client.Name))
+		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s.conf", clientData.Client.Email))
 		return c.Stream(http.StatusOK, "text/conf", reader)
 	}
 }
