@@ -433,6 +433,12 @@
             // Initial call, and then poll every 5 seconds for config changes
             updateApplyConfigVisibility();
             setInterval(updateApplyConfigVisibility, 5000);
+
+            // Only poll for updates if the current page is the status page.
+            if (window.location.pathname === "{{.basePath}}/status") {
+                updateStatusTable();
+                setInterval(updateStatusTable, 5000);
+            }
         });
 
         function addGlobalStyle(css, id) {
@@ -660,6 +666,28 @@
             });
         });
 
+        function updateSubnetRangesList(elementID, preselectedVal) {
+            $.getJSON("{{.basePath}}/api/subnet-ranges", null, function(data) {
+                $(`${elementID} option`).remove();
+                $(elementID).append(
+                    $("<option></option>")
+                        .text("Any")
+                        .val("__default_any__")
+                );
+                $.each(data, function(index, item) {
+                    $(elementID).append(
+                        $("<option></option>")
+                            .text(item)
+                            .val(item)
+                    );
+                    if (item === preselectedVal) {
+                        console.log(preselectedVal);
+                        $(elementID).val(preselectedVal).trigger('change')
+                    }
+                });
+            });
+        }
+        
         // New Client modal event.
         $(document).ready(function () {
             $("#modal_new_client").on('shown.bs.modal', function () {
